@@ -52,9 +52,14 @@ footer {
     position: fixed;
     top: 20px;
     right: 20px;
-    z-index: 9999;
-    min-width: 300px;
-    max-width: 420px;
+    z-index: 99999;
+    min-width: 320px;
+    max-width: 450px;
+    pointer-events: none;
+}
+
+.tma-toast-container .toast {
+    pointer-events: auto;
 }
 
 /* Charts responsive canvas wrapper */

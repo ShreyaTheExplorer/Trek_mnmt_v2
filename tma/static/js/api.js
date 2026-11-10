@@ -16,7 +16,14 @@ const authState = {
     },
 
     notify() {
-        this.listeners.forEach(cb => cb(this));
+        this.listeners.forEach(cb => {
+            try { cb(this); } catch (e) { console.error(e); }
+        });
+        try {
+            window.dispatchEvent(new CustomEvent('tma-auth-changed', {
+                detail: { token: this.token, role: this.role, user: this.user }
+            }));
+        } catch (e) {}
     },
 
     setAuth(token, role, user) {
@@ -44,8 +51,12 @@ const authState = {
     }
 };
 
+const reactiveAuthState = (window.Vue && typeof window.Vue.reactive === 'function')
+    ? window.Vue.reactive(authState)
+    : authState;
+
 const api = {
-    auth: authState,
+    auth: reactiveAuthState,
 
     async request(path, options = {}) {
         const url = path.startsWith('http') ? path : `${API_BASE}${path}`;

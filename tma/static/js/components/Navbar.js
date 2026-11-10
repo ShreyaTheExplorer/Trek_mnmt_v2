@@ -6,8 +6,11 @@
 const Navbar = {
     name: 'Navbar',
     data() {
+        const auth = window.tmaApi ? window.tmaApi.auth : null;
         return {
-            auth: window.tmaApi.auth,
+            token: auth ? auth.token : localStorage.getItem('tma_token'),
+            role: auth ? auth.role : localStorage.getItem('tma_role'),
+            user: auth ? auth.user : JSON.parse(localStorage.getItem('tma_user') || 'null'),
             unreadNotificationsCount: 0,
             notifications: [],
             showNotifModal: false,
@@ -16,19 +19,55 @@ const Navbar = {
     },
     computed: {
         isLoggedIn() {
-            return this.auth.isAuthenticated();
+            return !!this.token;
         },
         userRole() {
-            return this.auth.role;
+            return this.role || '';
         },
         userName() {
-            return this.auth.user ? this.auth.user.name : 'User';
+            if (this.user && this.user.name) return this.user.name;
+            if (this.userRole === 'admin') return 'Administrator';
+            if (this.userRole === 'staff') return 'Staff Guide';
+            return 'User';
+        }
+    },
+    watch: {
+        $route() {
+            this.syncAuth();
         }
     },
     methods: {
+        syncAuth() {
+            if (window.tmaApi && window.tmaApi.auth) {
+                this.token = window.tmaApi.auth.token;
+                this.role = window.tmaApi.auth.role;
+                this.user = window.tmaApi.auth.user;
+            } else {
+                this.token = localStorage.getItem('tma_token');
+                this.role = localStorage.getItem('tma_role');
+                this.user = JSON.parse(localStorage.getItem('tma_user') || 'null');
+            }
+
+            if (this.isLoggedIn && this.userRole === 'user') {
+                this.fetchNotifications();
+            } else {
+                this.notifications = [];
+                this.unreadNotificationsCount = 0;
+            }
+        },
         logout() {
-            window.tmaApi.auth.clearAuth();
+            if (window.tmaApi && window.tmaApi.auth) {
+                window.tmaApi.auth.clearAuth();
+            } else {
+                localStorage.removeItem('tma_token');
+                localStorage.removeItem('tma_role');
+                localStorage.removeItem('tma_user');
+            }
             if (this.pollTimer) clearInterval(this.pollTimer);
+            this.syncAuth();
+            if (window.showToast) {
+                window.showToast("Signed out successfully.", "info");
+            }
             this.$router.push('/login');
         },
         async fetchNotifications() {
@@ -59,15 +98,28 @@ const Navbar = {
         }
     },
     mounted() {
-        this.fetchNotifications();
+        this.syncAuth();
+
+        if (window.tmaApi && window.tmaApi.auth && typeof window.tmaApi.auth.subscribe === 'function') {
+            window.tmaApi.auth.subscribe(() => {
+                this.syncAuth();
+            });
+        }
+
+        window.addEventListener('tma-auth-changed', () => {
+            this.syncAuth();
+        });
+
+        window.addEventListener('storage', () => {
+            this.syncAuth();
+        });
+
         // Periodically poll for notifications if logged in as user
         this.pollTimer = setInterval(() => {
-            this.fetchNotifications();
+            if (this.isLoggedIn && this.userRole === 'user') {
+                this.fetchNotifications();
+            }
         }, 15000);
-
-        window.tmaApi.auth.subscribe(() => {
-            this.fetchNotifications();
-        });
     },
     beforeUnmount() {
         if (this.pollTimer) clearInterval(this.pollTimer);
@@ -80,11 +132,12 @@ const Navbar = {
                 <span class="text-white">TMA <span class="text-warning">Treks</span></span>
             </router-link>
 
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             <div class="collapse navbar-collapse" id="navbarContent">
+                <!-- Left Nav Items -->
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li v-if="isLoggedIn && userRole === 'user'" class="nav-item">
                         <router-link to="/dashboard" class="nav-link" active-class="active">
@@ -113,51 +166,83 @@ const Navbar = {
                     </li>
                 </ul>
 
+                <!-- Right Nav Items -->
                 <div class="d-flex align-items-center gap-2">
-                    <!-- Notification Bell for Trekker Users -->
-                    <button v-if="isLoggedIn && userRole === 'user'" 
-                            @click="openNotifications" 
-                            class="btn btn-outline-light position-relative me-2 btn-sm" 
-                            title="View Notifications">
-                        <i class="bi bi-bell-fill"></i>
-                        <span v-if="unreadNotificationsCount > 0" 
-                              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                            {{ unreadNotificationsCount }}
-                        </span>
-                    </button>
-
-                    <!-- User Dropdown when Logged In -->
-                    <div v-if="isLoggedIn" class="dropdown">
-                        <button class="btn btn-secondary dropdown-toggle btn-sm d-flex align-items-center gap-2" 
-                                type="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i>
-                            <span>{{ userName }}</span>
-                            <span class="badge bg-warning text-dark text-capitalize ms-1">{{ userRole }}</span>
+                    <!-- LOGGED IN USER ACTIONS -->
+                    <template v-if="isLoggedIn">
+                        <!-- Notification Bell for Trekker Users -->
+                        <button v-if="userRole === 'user'" 
+                                @click="openNotifications" 
+                                class="btn btn-outline-light position-relative me-1 btn-sm" 
+                                title="View Notifications">
+                            <i class="bi bi-bell-fill"></i>
+                            <span v-if="unreadNotificationsCount > 0" 
+                                  class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ unreadNotificationsCount }}
+                            </span>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li>
-                                <router-link to="/profile" class="dropdown-item">
-                                    <i class="bi bi-person-gear me-2"></i>My Profile
-                                </router-link>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <button @click="logout" class="dropdown-item text-danger">
-                                    <i class="bi bi-box-arrow-right me-2"></i>Sign Out
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
 
-                    <!-- Auth buttons when Logged Out -->
-                    <div v-else class="d-flex gap-2">
-                        <router-link to="/login" class="btn btn-outline-light btn-sm">
-                            <i class="bi bi-box-arrow-in-right me-1"></i>Login
+                        <!-- Profile Icon Link -->
+                        <router-link to="/profile" class="btn btn-outline-light btn-sm d-flex align-items-center gap-2" title="My Profile">
+                            <i class="bi bi-person-circle fs-5"></i>
+                            <span class="d-none d-md-inline small fw-medium">{{ userName }}</span>
                         </router-link>
-                        <router-link to="/register" class="btn btn-warning btn-sm text-dark fw-semibold">
-                            <i class="bi bi-person-plus me-1"></i>Register
-                        </router-link>
-                    </div>
+
+                        <!-- Settings Icon & Options Dropdown -->
+                        <div class="dropdown">
+                            <button class="btn btn-secondary dropdown-toggle btn-sm d-flex align-items-center gap-1 shadow-sm" 
+                                    type="button" id="navbarSettingsMenu" data-bs-toggle="dropdown" aria-expanded="false" title="Account Settings & Menu">
+                                <i class="bi bi-gear-fill"></i>
+                                <span class="badge bg-warning text-dark text-capitalize ms-1">{{ userRole }}</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="navbarSettingsMenu">
+                                <li class="dropdown-header text-uppercase small fw-bold text-muted">
+                                    Signed in as <strong class="text-dark">{{ userName }}</strong>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <router-link to="/profile" class="dropdown-item d-flex align-items-center gap-2">
+                                        <i class="bi bi-person-gear text-primary"></i> Profile Settings
+                                    </router-link>
+                                </li>
+                                <li v-if="userRole === 'admin'">
+                                    <router-link to="/admin" class="dropdown-item d-flex align-items-center gap-2">
+                                        <i class="bi bi-shield-shaded text-info"></i> Admin Control Panel
+                                    </router-link>
+                                </li>
+                                <li v-if="userRole === 'staff'">
+                                    <router-link to="/staff" class="dropdown-item d-flex align-items-center gap-2">
+                                        <i class="bi bi-person-workspace text-info"></i> Staff Dashboard
+                                    </router-link>
+                                </li>
+                                <li v-if="userRole === 'user'">
+                                    <router-link to="/my-bookings" class="dropdown-item d-flex align-items-center gap-2">
+                                        <i class="bi bi-journal-bookmark text-info"></i> My Bookings
+                                    </router-link>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <button @click="logout" class="dropdown-item text-danger d-flex align-items-center gap-2">
+                                        <i class="bi bi-box-arrow-right"></i> Logout
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </template>
+
+                    <!-- LOGGED OUT ACTIONS (Only shown when user is NOT logged in) -->
+                    <template v-else>
+                        <div class="d-flex gap-2">
+                            <router-link to="/login" class="btn btn-outline-light btn-sm d-flex align-items-center gap-1">
+                                <i class="bi bi-box-arrow-in-right"></i>
+                                <span>Login</span>
+                            </router-link>
+                            <router-link to="/register" class="btn btn-warning btn-sm text-dark fw-semibold d-flex align-items-center gap-1">
+                                <i class="bi bi-person-plus"></i>
+                                <span>Register</span>
+                            </router-link>
+                        </div>
+                    </template>
                 </div>
             </div>
         </div>
@@ -210,4 +295,3 @@ const Navbar = {
 };
 
 window.NavbarComponent = Navbar;
-

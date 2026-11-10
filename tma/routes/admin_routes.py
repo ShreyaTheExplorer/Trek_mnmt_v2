@@ -146,7 +146,12 @@ def create_trek():
         return api_response(False, "start_date and end_date must be provided in YYYY-MM-DD format.", None, 400)
 
     if end_date < start_date:
-        return api_response(False, "end_date cannot be earlier than start_date.", None, 400)
+        return api_response(
+            False,
+            f"Invalid Date Range: Start Date ({start_date}) cannot be after End Date ({end_date}). End Date must be greater than or equal to Start Date.",
+            None,
+            400
+        )
 
     # Validate staff assignment if provided (must be active staff)
     if assigned_staff_id:
@@ -190,7 +195,7 @@ def list_treks():
     """
     List treks with search by name/location and filter by status.
     """
-    search = request.args.get('search', '').strip()
+    search = (request.args.get('search', '').strip() or request.args.get('q', '').strip())
     status = request.args.get('status', '').strip()
     include_deleted = request.args.get('include_deleted', 'false').lower() == 'true'
 
@@ -292,7 +297,12 @@ def update_trek(trek_id):
             return api_response(False, "end_date must be in YYYY-MM-DD format.", None, 400)
 
     if new_end < new_start:
-        return api_response(False, "end_date cannot be earlier than start_date.", None, 400)
+        return api_response(
+            False,
+            f"Invalid Date Range: Start Date ({new_start}) cannot be after End Date ({new_end}). End Date must be greater than or equal to Start Date.",
+            None,
+            400
+        )
 
     trek.start_date = new_start
     trek.end_date = new_end
@@ -462,7 +472,7 @@ def list_staff():
     """
     List staff members with search by name, email, phone, or specialization.
     """
-    search = request.args.get('search', '').strip()
+    search = (request.args.get('search', '').strip() or request.args.get('q', '').strip())
     query = User.query.filter_by(role='staff')
 
     if search:
@@ -615,7 +625,7 @@ def list_users():
     """
     Get users (search by name/email, filter by status).
     """
-    search = request.args.get('search', '').strip()
+    search = (request.args.get('search', '').strip() or request.args.get('q', '').strip())
     status = request.args.get('status', '').strip()
 
     query = User.query.filter_by(role='user')

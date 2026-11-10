@@ -1,6 +1,6 @@
 /**
  * AdminTreks Component
- * Complete CRUD management, staff assignment, and status controls for treks.
+ * Complete CRUD management, staff assignment, date validation, and status controls for treks.
  */
 
 const AdminTreks = {
@@ -17,10 +17,18 @@ const AdminTreks = {
             showTrekModal: false,
             isEditing: false,
             currentTrekId: null,
+            modalError: '',
+            modalSuccess: '',
+            dateErrors: {
+                start_date: '',
+                end_date: ''
+            },
+            fieldErrors: {},
             trekForm: {
                 name: '',
                 location: '',
                 difficulty: 'Moderate',
+                status: 'Open',
                 duration_days: 3,
                 total_slots: 20,
                 start_date: '',
@@ -63,7 +71,10 @@ const AdminTreks = {
             this.loading = true;
             try {
                 const params = {};
-                if (this.searchQuery) params.q = this.searchQuery;
+                if (this.searchQuery) {
+                    params.search = this.searchQuery;
+                    params.q = this.searchQuery;
+                }
                 if (this.filterStatus) params.status = this.filterStatus;
 
                 const res = await window.tmaApi.get('/admin/treks', params);
@@ -71,7 +82,9 @@ const AdminTreks = {
                     this.treks = res.data;
                 }
             } catch (err) {
-                window.showToast("Failed to fetch treks: " + err.message, "danger");
+                if (window.showToast) {
+                    window.showToast("Failed to fetch treks: " + err.message, "danger");
+                }
             } finally {
                 this.loading = false;
             }
@@ -81,7 +94,6 @@ const AdminTreks = {
             try {
                 const res = await window.tmaApi.get('/admin/staff');
                 if (res && res.data) {
-                    // Filter active staff for assignment
                     this.staffList = res.data.filter(s => s.status === 'active');
                 }
             } catch (err) {
@@ -89,17 +101,36 @@ const AdminTreks = {
             }
         },
 
+        formatDate(dateObj) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        },
+
         openCreateModal() {
             this.isEditing = false;
             this.currentTrekId = null;
+            this.modalError = '';
+            this.modalSuccess = '';
+            this.dateErrors = { start_date: '', end_date: '' };
+            this.fieldErrors = {};
+
+            const today = new Date();
+            const defaultStart = new Date(today);
+            defaultStart.setDate(today.getDate() + 7);
+            const defaultEnd = new Date(today);
+            defaultEnd.setDate(today.getDate() + 12);
+
             this.trekForm = {
                 name: '',
                 location: '',
                 difficulty: 'Moderate',
-                duration_days: 3,
+                status: 'Open',
+                duration_days: 5,
                 total_slots: 20,
-                start_date: '',
-                end_date: '',
+                start_date: this.formatDate(defaultStart),
+                end_date: this.formatDate(defaultEnd),
                 price: 5000,
                 description: '',
                 instructions: ''
@@ -110,10 +141,16 @@ const AdminTreks = {
         openEditModal(trek) {
             this.isEditing = true;
             this.currentTrekId = trek.id;
+            this.modalError = '';
+            this.modalSuccess = '';
+            this.dateErrors = { start_date: '', end_date: '' };
+            this.fieldErrors = {};
+
             this.trekForm = {
                 name: trek.name,
                 location: trek.location,
                 difficulty: trek.difficulty,
+                status: trek.status || 'Pending',
                 duration_days: trek.duration_days,
                 total_slots: trek.total_slots,
                 start_date: trek.start_date,
@@ -125,30 +162,114 @@ const AdminTreks = {
             this.showTrekModal = true;
         },
 
-        async saveTrek() {
-            // Validation
-            if (!this.trekForm.name || !this.trekForm.location || !this.trekForm.start_date || !this.trekForm.end_date) {
-                window.showToast("Please fill in all required fields.", "warning");
-                return;
+        validateDates() {
+            this.dateErrors = { start_date: '', end_date: '' };
+            
+            if (!this.trekForm.start_date) {
+                this.dateErrors.start_date = "Start Date is required.";
+                return false;
             }
-            if (new Date(this.trekForm.end_date) < new Date(this.trekForm.start_date)) {
-                window.showToast("End date must be greater than or equal to start date.", "warning");
+            if (!this.trekForm.end_date) {
+                this.dateErrors.end_date = "End Date is required.";
+                return false;
+            }
+
+            // ISO YYYY-MM-DD string comparison
+            if (this.trekForm.start_date > this.trekForm.end_date) {
+                const msg = `Invalid Date Range: Start Date (${this.trekForm.start_date}) cannot be after End Date (${this.trekForm.end_date}). End Date must be greater than or equal to Start Date.`;
+                this.dateErrors.start_date = `Start Date (${this.trekForm.start_date}) is after End Date (${this.trekForm.end_date}).`;
+                this.dateErrors.end_date = `End Date (${this.trekForm.end_date}) cannot be earlier than Start Date (${this.trekForm.start_date}).`;
+                this.modalError = msg;
+                return false;
+            }
+
+            return true;
+        },
+
+        validateForm() {
+            this.fieldErrors = {};
+            this.modalError = '';
+            let isValid = true;
+
+            if (!this.trekForm.name || this.trekForm.name.trim().length < 3) {
+                this.fieldErrors.name = "Trek name is required and must be at least 3 characters.";
+                isValid = false;
+            }
+
+            if (!this.trekForm.location || !this.trekForm.location.trim()) {
+                this.fieldErrors.location = "Location is required.";
+                isValid = false;
+            }
+
+            if (!this.trekForm.description || this.trekForm.description.trim().length < 10) {
+                this.fieldErrors.description = "Description is required and must be at least 10 characters.";
+                isValid = false;
+            }
+
+            if (this.trekForm.duration_days == null || parseInt(this.trekForm.duration_days) < 1) {
+                this.fieldErrors.duration_days = "Duration days must be a positive number (at least 1 day).";
+                isValid = false;
+            }
+
+            if (this.trekForm.total_slots == null || parseInt(this.trekForm.total_slots) < 0) {
+                this.fieldErrors.total_slots = "Total slots must be an integer greater than or equal to 0.";
+                isValid = false;
+            }
+
+            if (this.trekForm.price == null || parseFloat(this.trekForm.price) < 0) {
+                this.fieldErrors.price = "Price must be a non-negative number.";
+                isValid = false;
+            }
+
+            if (!this.validateDates()) {
+                isValid = false;
+            }
+
+            if (!isValid && !this.modalError) {
+                const first = Object.values(this.fieldErrors)[0] || Object.values(this.dateErrors)[0];
+                this.modalError = first || "Please complete all required fields correctly.";
+            }
+
+            return isValid;
+        },
+
+        async saveTrek() {
+            this.modalError = '';
+            this.modalSuccess = '';
+
+            if (!this.validateForm()) {
+                if (window.showToast) {
+                    window.showToast(this.modalError, "danger");
+                }
                 return;
             }
 
             this.actionLoading = true;
             try {
+                let res;
                 if (this.isEditing) {
-                    await window.tmaApi.put(`/admin/treks/${this.currentTrekId}`, this.trekForm);
-                    window.showToast("Trek details updated successfully!", "success");
+                    res = await window.tmaApi.put(`/admin/treks/${this.currentTrekId}`, this.trekForm);
+                    const msg = (res && res.message) || "Trek details updated successfully!";
+                    this.modalSuccess = msg;
+                    if (window.showToast) window.showToast(msg, "success");
                 } else {
-                    await window.tmaApi.post('/admin/treks', this.trekForm);
-                    window.showToast("New trek created successfully!", "success");
+                    res = await window.tmaApi.post('/admin/treks', this.trekForm);
+                    const msg = (res && res.message) || "New trek created successfully!";
+                    this.modalSuccess = msg;
+                    if (window.showToast) window.showToast(msg, "success");
                 }
-                this.showTrekModal = false;
+
                 await this.fetchTreks();
+                setTimeout(() => {
+                    this.showTrekModal = false;
+                    this.modalSuccess = '';
+                }, 800);
             } catch (err) {
-                window.showToast("Failed to save trek: " + err.message, "danger");
+                const errMsg = err.message || (err.data && err.data.message) || "Failed to save trek.";
+                this.modalError = errMsg;
+                if (window.showToast) {
+                    window.showToast("Failed to save trek: " + errMsg, "danger");
+                }
             } finally {
                 this.actionLoading = false;
             }
@@ -389,11 +510,29 @@ const AdminTreks = {
                         <button type="button" class="btn-close btn-close-white" @click="showTrekModal = false"></button>
                     </div>
                     <div class="modal-body">
-                        <form @submit.prevent="saveTrek">
+                        <!-- Inline Validation / Error Message -->
+                        <div v-if="modalError" class="alert alert-danger d-flex align-items-center gap-2 py-2 small mb-3 shadow-sm" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0"></i>
+                            <div><strong>Error:</strong> {{ modalError }}</div>
+                        </div>
+
+                        <!-- Inline Success Message -->
+                        <div v-if="modalSuccess" class="alert alert-success d-flex align-items-center gap-2 py-2 small mb-3 shadow-sm" role="alert">
+                            <i class="bi bi-check-circle-fill fs-5 flex-shrink-0"></i>
+                            <div><strong>Success:</strong> {{ modalSuccess }}</div>
+                        </div>
+
+                        <form id="trekFormModal" @submit.prevent="saveTrek" novalidate>
                             <div class="row g-3">
                                 <div class="col-12 col-md-8">
                                     <label class="form-label small fw-semibold">Trek Name *</label>
-                                    <input type="text" v-model="trekForm.name" class="form-control" placeholder="e.g. Roopkund Mystery Lake Trek" required />
+                                    <input type="text" 
+                                           v-model="trekForm.name" 
+                                           class="form-control" 
+                                           :class="{'is-invalid': fieldErrors.name}"
+                                           placeholder="e.g. Roopkund Mystery Lake Trek" 
+                                           required />
+                                    <div v-if="fieldErrors.name" class="invalid-feedback d-block">{{ fieldErrors.name }}</div>
                                 </div>
                                 <div class="col-12 col-md-4">
                                     <label class="form-label small fw-semibold">Difficulty *</label>
@@ -406,45 +545,110 @@ const AdminTreks = {
 
                                 <div class="col-12 col-md-6">
                                     <label class="form-label small fw-semibold">Location / Region *</label>
-                                    <input type="text" v-model="trekForm.location" class="form-control" placeholder="e.g. Uttarakhand, Himalayas" required />
+                                    <input type="text" 
+                                           v-model="trekForm.location" 
+                                           class="form-control" 
+                                           :class="{'is-invalid': fieldErrors.location}"
+                                           placeholder="e.g. Uttarakhand, Himalayas" 
+                                           required />
+                                    <div v-if="fieldErrors.location" class="invalid-feedback d-block">{{ fieldErrors.location }}</div>
                                 </div>
+
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small fw-semibold">Operational Status *</label>
+                                    <select v-model="trekForm.status" class="form-select" required>
+                                        <option value="Open">Open (Accepting Bookings)</option>
+                                        <option value="Approved">Approved (Ready)</option>
+                                        <option value="Pending">Pending (Draft / Review)</option>
+                                        <option value="Closed">Closed</option>
+                                        <option value="Completed">Completed</option>
+                                    </select>
+                                </div>
+
                                 <div class="col-6 col-md-3">
                                     <label class="form-label small fw-semibold">Duration (Days) *</label>
-                                    <input type="number" v-model="trekForm.duration_days" class="form-control" min="1" required />
+                                    <input type="number" 
+                                           v-model="trekForm.duration_days" 
+                                           class="form-control" 
+                                           :class="{'is-invalid': fieldErrors.duration_days}"
+                                           min="1" 
+                                           required />
+                                    <div v-if="fieldErrors.duration_days" class="invalid-feedback d-block">{{ fieldErrors.duration_days }}</div>
                                 </div>
                                 <div class="col-6 col-md-3">
                                     <label class="form-label small fw-semibold">Total Capacity Slots *</label>
-                                    <input type="number" v-model="trekForm.total_slots" class="form-control" min="1" required />
+                                    <input type="number" 
+                                           v-model="trekForm.total_slots" 
+                                           class="form-control" 
+                                           :class="{'is-invalid': fieldErrors.total_slots}"
+                                           min="0" 
+                                           required />
+                                    <div v-if="fieldErrors.total_slots" class="invalid-feedback d-block">{{ fieldErrors.total_slots }}</div>
+                                </div>
+
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label small fw-semibold">Start Date *</label>
+                                    <input type="date" 
+                                           v-model="trekForm.start_date" 
+                                           class="form-control" 
+                                           :class="{'is-invalid': dateErrors.start_date}" 
+                                           @change="validateDates"
+                                           @input="dateErrors.start_date = ''"
+                                           required />
+                                    <div v-if="dateErrors.start_date" class="invalid-feedback d-block">
+                                        <i class="bi bi-exclamation-circle me-1"></i>{{ dateErrors.start_date }}
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label small fw-semibold">End Date *</label>
+                                    <input type="date" 
+                                           v-model="trekForm.end_date" 
+                                           class="form-control" 
+                                           :class="{'is-invalid': dateErrors.end_date}" 
+                                           @change="validateDates"
+                                           @input="dateErrors.end_date = ''"
+                                           required />
+                                    <div v-if="dateErrors.end_date" class="invalid-feedback d-block">
+                                        <i class="bi bi-exclamation-circle me-1"></i>{{ dateErrors.end_date }}
+                                    </div>
                                 </div>
 
                                 <div class="col-12 col-md-4">
-                                    <label class="form-label small fw-semibold">Start Date *</label>
-                                    <input type="date" v-model="trekForm.start_date" class="form-control" required />
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label small fw-semibold">End Date *</label>
-                                    <input type="date" v-model="trekForm.end_date" class="form-control" required />
-                                </div>
-                                <div class="col-12 col-md-4">
                                     <label class="form-label small fw-semibold">Price per Trekker (₹) *</label>
-                                    <input type="number" step="0.01" v-model="trekForm.price" class="form-control" min="0" required />
+                                    <input type="number" 
+                                           step="0.01" 
+                                           v-model="trekForm.price" 
+                                           class="form-control" 
+                                           :class="{'is-invalid': fieldErrors.price}"
+                                           min="0" 
+                                           required />
+                                    <div v-if="fieldErrors.price" class="invalid-feedback d-block">{{ fieldErrors.price }}</div>
                                 </div>
 
                                 <div class="col-12">
                                     <label class="form-label small fw-semibold">Trek Description *</label>
-                                    <textarea v-model="trekForm.description" class="form-control" rows="3" placeholder="Provide overview, scenic highlights, and trail summary..." required></textarea>
+                                    <textarea v-model="trekForm.description" 
+                                              class="form-control" 
+                                              :class="{'is-invalid': fieldErrors.description}"
+                                              rows="3" 
+                                              placeholder="Provide overview, scenic highlights, and trail summary (minimum 10 characters)..." 
+                                              required></textarea>
+                                    <div v-if="fieldErrors.description" class="invalid-feedback d-block">{{ fieldErrors.description }}</div>
                                 </div>
 
                                 <div class="col-12">
                                     <label class="form-label small fw-semibold">Packing & Trail Instructions</label>
-                                    <textarea v-model="trekForm.instructions" class="form-control" rows="2" placeholder="Gear needed, weather cautions, physical prep tips..."></textarea>
+                                    <textarea v-model="trekForm.instructions" 
+                                              class="form-control" 
+                                              rows="2" 
+                                              placeholder="Gear needed, weather cautions, physical prep tips..."></textarea>
                                 </div>
                             </div>
                         </form>
                     </div>
                     <div class="modal-footer bg-light">
                         <button type="button" class="btn btn-secondary" @click="showTrekModal = false">Cancel</button>
-                        <button type="button" class="btn btn-primary" :disabled="actionLoading" @click="saveTrek">
+                        <button type="submit" form="trekFormModal" class="btn btn-primary" :disabled="actionLoading" @click="saveTrek">
                             <span v-if="actionLoading" class="spinner-border spinner-border-sm me-1"></span>
                             {{ isEditing ? 'Save Changes' : 'Create Trek' }}
                         </button>
@@ -523,4 +727,3 @@ const AdminTreks = {
 };
 
 window.AdminTreks = AdminTreks;
-

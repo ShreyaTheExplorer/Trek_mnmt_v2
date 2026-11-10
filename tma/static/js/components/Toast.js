@@ -3,9 +3,9 @@
  * Global reactive notification alerts container.
  */
 
-const ToastState = {
+const rawToastState = {
     toasts: [],
-    add(message, type = 'success', duration = 4000) {
+    add(message, type = 'success', duration = 4500) {
         const id = Date.now() + Math.random();
         this.toasts.push({ id, message, type });
         if (duration > 0) {
@@ -22,15 +22,26 @@ const ToastState = {
     }
 };
 
-window.showToast = (msg, type = 'success', duration = 4000) => {
-    ToastState.add(msg, type, duration);
+// Make reactive via Vue 3 if Vue is present
+const ToastState = (window.Vue && typeof window.Vue.reactive === 'function')
+    ? window.Vue.reactive(rawToastState)
+    : rawToastState;
+
+window.ToastState = ToastState;
+
+window.showToast = (msg, type = 'success', duration = 4500) => {
+    if (window.ToastState && typeof window.ToastState.add === 'function') {
+        window.ToastState.add(msg, type, duration);
+    } else {
+        console.log(`[Toast ${type}]: ${msg}`);
+    }
 };
 
 const ToastComponent = {
     name: 'ToastComponent',
     data() {
         return {
-            state: ToastState
+            state: window.ToastState || ToastState
         };
     },
     methods: {
@@ -54,7 +65,7 @@ const ToastComponent = {
              role="alert">
             <div class="d-flex">
                 <div class="toast-body d-flex align-items-center gap-2">
-                    <i class="bi fs-5" :class="iconForType(t.type)"></i>
+                    <i class="bi fs-5 flex-shrink-0" :class="iconForType(t.type)"></i>
                     <div class="text-dark small fw-medium">{{ t.message }}</div>
                 </div>
                 <button type="button" class="btn-close me-2 m-auto" @click="removeToast(t.id)"></button>
@@ -65,4 +76,3 @@ const ToastComponent = {
 };
 
 window.ToastComponent = ToastComponent;
-

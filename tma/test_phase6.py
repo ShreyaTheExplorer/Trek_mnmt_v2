@@ -183,7 +183,8 @@ def run_tests():
         # Check: Next catalog query MUST now be a MISS because slots changed!
         res_after_book = client.get('/api/user/treks?q=Kashmir', headers=user_headers)
         assert res_after_book.headers.get('X-Cache') == 'MISS', f"Expected X-Cache: MISS after booking mutation, got {res_after_book.headers.get('X-Cache')}"
-        assert res_after_book.get_json()['data']['treks'][0]['available_slots'] == 14
+        matched_trek = next((t for t in res_after_book.get_json()['data']['treks'] if t['id'] == trek_id), None)
+        assert matched_trek is not None and matched_trek['available_slots'] == 14
         print("  PASS: Catalog cache invalidated upon booking creation. Returned X-Cache: MISS with updated slots (14).")
 
         # Check: Admin dashboard cache was also invalidated!
