@@ -10,19 +10,19 @@ A complete Trekking Management Application built according to MAD-2 project cons
 
 ---
 
-## Part 1 Deliverables & Architecture
+## Part 1 & Part 2 Deliverables
 
-### 1. Folder Structure
+### Project Structure
 ```
 tma/
   app.py               # Flask app factory, route registration, programmatic DB & seeder
   config.py            # Environment-aware configuration (tma.db, Redis, Mail, Webhook)
   extensions.py        # SQLAlchemy db and Redis client
   models.py            # User, StaffProfile, Trek, Booking, Notification models
-  auth.py              # JWT token generator, unified {success, message, data} response, decorators
+  auth.py              # Password hashing, JWT tokens, login_required, role_required
   routes/
-    auth_routes.py     # Register, Login, Me, Profile, Change Password
-    admin_routes.py    # Admin management endpoints
+    auth_routes.py     # Register, Login, Me (GET & PUT)
+    admin_routes.py    # Admin management & dashboard endpoints
     staff_routes.py    # Staff operations
     user_routes.py     # Trekker browsing and bookings
   cache.py             # Redis caching layer
@@ -33,54 +33,126 @@ tma/
   static/
     css/custom.css     # TMA custom styles
     js/
-      app.js
-      router.js
-      api.js
-      components/
   exports/             # Generated CSV exports directory
   requirements.txt     # Python dependencies
+  test_phase1.py       # Part 1 self-test suite
+  test_phase2.py       # Part 2 self-test suite
   README.md            # Documentation & instructions
 ```
 
-### 2. Database Models (`tma/models.py`)
-- **`User`**: `id`, `name`, `email` (unique), `password_hash`, `phone`, `role` (`'admin' | 'staff' | 'user'`), `status` (`'active' | 'inactive' | 'blacklisted'`), `created_at`, plus profile fields (`age`, `emergency_contact`, `address`).
-- **`StaffProfile`**: `id`, `user_id` (FK User, unique), `contact_details`, `specialization`, `status` (`'active' | 'inactive'`), `joined_on`.
-- **`Trek`**: `id`, `name`, `location`, `difficulty` (`'Easy' | 'Moderate' | 'Hard'`), `duration_days`, `total_slots`, `available_slots`, `assigned_staff_id` (FK User, nullable), `status` (`'Pending' | 'Approved' | 'Open' | 'Closed' | 'Completed'`), `start_date`, `end_date`, `description`, `instructions`, `price`, `created_at`, `is_deleted` (soft delete flag).
-- **`Booking`**: `id`, `user_id`, `trek_id`, `booking_date`, `status` (`'Booked' | 'Cancelled' | 'Completed'`), `payment_status` (`'Pending' | 'Paid' | 'NA'`), `participants_count` (default 1), `cancelled_at`. Contains `Booking.has_active_booking(user_id, trek_id)` check.
-- **`Notification`**: `id`, `user_id`, `message`, `created_at`, `is_read`.
-- Helper `to_dict()` methods on all models.
-
-### 3. Programmatic Database Creation & Seeding (`tma/app.py`)
-- Database tables are created programmatically with `db.create_all()` inside `app.app_context()`.
-- Seeds exactly one admin account on startup only if no admin exists:
-  - **Email:** `admin@tma.com`
-  - **Password:** `admin123`
-  - **Role:** `admin`
-  - **Status:** `active`
-
-### 4. Endpoints
-- `GET /api/health`: Returns API health and database connection status (`200 OK`).
-- `GET /`: Serves `templates/index.html` with Bootstrap 5 CDN and Vue 3 mount point (`<div id="app">`).
-
 ---
 
-## Instructions to Run
+## Running the Application & Tests
 
-### Step 1: Activate Virtual Environment
+### 1. Activate Environment
 ```powershell
-# From project root:
 .venv\Scripts\activate
 ```
 
-### Step 2: Run Part 1 Self-Test Suite
+### 2. Run Test Suites
 ```powershell
+# Part 1: Models, programmatic seeding, health check
 python tma/test_phase1.py
+
+# Part 2: Auth, validations, token generation, profile update, RBAC
+python tma/test_phase2.py
 ```
 
-### Step 3: Start the Flask Application
+### 3. Start the Flask Application
 ```powershell
 python tma/app.py
 ```
-Visit:
-- Home: [http://127.0.0.1:5000/](http://127.0.0.1:5000/)
-- Health Check: [http://127.0.0.1:5000/api/health](http://127.0.0.1:5000/api/health)
+App runs at: `http://127.0.0.1:5000`
+
+---
+
+## Part 2: Authentication & RBAC cURL Reference
+
+### 1. Register a New User (Trekkers Only)
+> **Rule:** Only `user` accounts can self-register. The `role` field is strictly forced to `'user'`.
+```bash
+curl -X POST http://127.0.0.1:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Pooja Verma",
+    "email": "pooja@example.com",
+    "password": "password123",
+    "phone": "+91 9876543210",
+    "age": 25,
+    "emergency_contact": "9876543211",
+    "address": "Park Street, Kolkata"
+  }'
+```
+
+### 2. Login (Works for all three roles)
+#### A. User Login:
+```bash
+curl -X POST http://127.0.0.1:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "pooja@example.com",
+    "password": "password123"
+  }'
+```
+
+#### B. Admin Login:
+```bash
+curl -X POST http://127.0.0.1:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@tma.com",
+    "password": "admin123"
+  }'
+```
+
+### 3. Get Current User Profile (`GET /api/auth/me`)
+```bash
+curl -X GET http://127.0.0.1:5000/api/auth/me \
+  -H "Authorization: Bearer <YOUR_TOKEN>"
+```
+
+### 4. Update Profile & Change Password (`PUT /api/auth/me`)
+```bash
+curl -X PUT http://127.0.0.1:5000/api/auth/me \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Pooja V. Sharma",
+    "phone": "+91 9876500000",
+    "age": 26,
+    "current_password": "password123",
+    "new_password": "newpassword456"
+  }'
+```
+
+### 5. Role-Based Access Control (RBAC) Verification
+#### A. User token accessing Admin route -> **403 Forbidden**
+```bash
+curl -X GET http://127.0.0.1:5000/api/admin/dashboard \
+  -H "Authorization: Bearer <USER_TOKEN>"
+```
+*Expected response (403 Forbidden):*
+```json
+{
+  "data": null,
+  "message": "Access forbidden: role 'user' is not authorized to access this resource.",
+  "success": false
+}
+```
+
+#### B. Admin token accessing Admin route -> **200 OK**
+```bash
+curl -X GET http://127.0.0.1:5000/api/admin/dashboard \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+*Expected response (200 OK):*
+```json
+{
+  "data": {
+    "recent_bookings": [],
+    "stats": { ... }
+  },
+  "message": "Admin dashboard statistics retrieved.",
+  "success": true
+}
+```

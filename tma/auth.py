@@ -1,9 +1,19 @@
+import re
 from datetime import datetime, timedelta
 from functools import wraps
 import jwt
 from flask import current_app, request, g, jsonify
+from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
 from models import User
+
+def hash_password(password: str) -> str:
+    """Hash password using Werkzeug security."""
+    return generate_password_hash(password)
+
+def verify_password(pwhash: str, password: str) -> bool:
+    """Verify password against Werkzeug hash."""
+    return check_password_hash(pwhash, password)
 
 def api_response(success: bool = True, message: str = "", data=None, status_code: int = 200):
     """
@@ -24,10 +34,10 @@ def api_response(success: bool = True, message: str = "", data=None, status_code
 
 def generate_token(user: User) -> str:
     """
-    Generate a signed JWT token with standard claims.
+    Generate a signed JWT token containing user id, role, name, and expiration.
     """
     secret = current_app.config.get('JWT_SECRET_KEY') or current_app.config.get('SECRET_KEY', 'default-secret')
-    expires_in = current_app.config.get('JWT_ACCESS_TOKEN_EXPIRES', 86400)
+    expires_in = current_app.config.get('JWT_ACCESS_TOKEN_EXPIRES', 86400) # Default 24 hours
 
     now = datetime.utcnow()
     payload = {
@@ -53,7 +63,8 @@ def decode_token(token: str) -> dict:
 
 def login_required(f):
     """
-    Decorator to protect endpoints: requires a valid JWT token in Authorization header.
+    Decorator that reads the Authorization: Bearer <token> header,
+    loads the user, and rejects inactive or blacklisted users with 403.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -73,9 +84,9 @@ def login_required(f):
         except jwt.InvalidTokenError:
             return api_response(False, "Invalid token. Authentication failed.", None, 401)
 
-        user_id = payload.get('sub')
+        user_id_raw = payload.get('sub')
         try:
-            user_id = int(user_id)
+            user_id = int(user_id_raw)
         except (TypeError, ValueError):
             return api_response(False, "Invalid token subject claim.", None, 401)
 
@@ -83,6 +94,11 @@ def login_required(f):
         if not user:
             return api_response(False, "User account not found.", None, 401)
 
+        # Reject inactive or blacklisted accounts with 403
+        if user.status == 'blacklisted':
+            return api_response(False, "Account is blacklisted. Access denied.", None, 403)
+        if user.status == 'inactive':
+            return api_response(False, "Account is inactive. Please contact administrator.", None, 403)
         if user.status != 'active':
             return api_response(False, f"Account is {user.status}. Access denied.", None, 403)
 
