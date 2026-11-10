@@ -27,6 +27,9 @@ class User(db.Model):
     bookings = db.relationship('Booking', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     notifications = db.relationship('Notification', backref='user', lazy='dynamic', cascade='all, delete-orphan')
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def set_password(self, password: str):
         self.password_hash = generate_password_hash(password)
 
@@ -66,6 +69,9 @@ class StaffProfile(db.Model):
     status = db.Column(db.String(20), nullable=False, default='active')
     joined_on = db.Column(db.Date, default=date.today, nullable=False)
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -102,6 +108,9 @@ class Trek(db.Model):
 
     # Relationships
     bookings = db.relationship('Booking', backref='trek', lazy='dynamic', cascade='all, delete-orphan')
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def recalculate_available_slots(self):
         """
@@ -150,6 +159,9 @@ class Booking(db.Model):
     participants_count = db.Column(db.Integer, nullable=False, default=1)
     cancelled_at = db.Column(db.DateTime, nullable=True)
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     @classmethod
     def has_active_booking(cls, user_id: int, trek_id: int) -> bool:
         """
@@ -189,6 +201,9 @@ class Notification(db.Model):
     message = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     is_read = db.Column(db.Boolean, default=False, nullable=False)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def to_dict(self):
         return {
