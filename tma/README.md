@@ -30,6 +30,9 @@ python tma/test_phase3.py
 
 # Part 4: Staff API (Assigned Treks, Slots, Status Toggle, Manifest, Start/Complete, Isolation)
 python tma/test_phase4.py
+
+# Part 5: Trekker/User API (Catalog, Booking Rules, Overbooking/Duplicate checks, Cancel-Restore, Dashboard, Notifications, Export)
+python tma/test_phase5.py
 ```
 
 ### 3. Start the Flask Application
@@ -40,76 +43,90 @@ App runs at: `http://127.0.0.1:5000`
 
 ---
 
-## Part 4: Staff API cURL Reference
+## Part 5: Trekker / User API cURL Reference
 
-All staff routes require `Authorization: Bearer <STAFF_TOKEN>`.
-Staff users can only view and modify treks **assigned to them** (`assigned_staff_id == current_staff_id`). Attempting to access another staff member's trek returns `403 Forbidden`.
+All user routes require `Authorization: Bearer <USER_TOKEN>`.
 
-### 1. Staff Dashboard
-Returns assigned treks and registered-user count per trek.
+### 1. Browse Treks Catalog (Paginated with Filters)
 ```bash
-curl -X GET http://127.0.0.1:5000/api/staff/dashboard \
-  -H "Authorization: Bearer <STAFF_TOKEN>"
+curl -X GET "http://127.0.0.1:5000/api/user/treks?q=Valley&difficulty=Moderate&min_days=3&page=1&per_page=10" \
+  -H "Authorization: Bearer <USER_TOKEN>"
 ```
 
-### 2. List Assigned Treks Only
+### 2. Get Single Trek Details
 ```bash
-curl -X GET http://127.0.0.1:5000/api/staff/treks \
-  -H "Authorization: Bearer <STAFF_TOKEN>"
+curl -X GET http://127.0.0.1:5000/api/user/treks/1 \
+  -H "Authorization: Bearer <USER_TOKEN>"
 ```
 
-### 3. Update Slots for Assigned Trek
-Cannot set `total_slots` below the number of booked users; keeps `available_slots` consistent.
+### 3. Book a Trek (Enforces Business Rules Inside DB Transaction)
+1. Trek status must be `Open` (else `400`).
+2. No duplicate active booking for same user and trek (else `409`).
+3. Available slots must be >= participants (else `409 "Fully booked"`).
+4. Decrements `available_slots` and creates booking with status `Booked`.
+5. Creates confirmation notification.
 ```bash
-curl -X PUT http://127.0.0.1:5000/api/staff/treks/1/slots \
-  -H "Authorization: Bearer <STAFF_TOKEN>" \
+curl -X POST http://127.0.0.1:5000/api/user/bookings \
+  -H "Authorization: Bearer <USER_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"total_slots": 25}'
+  -d '{"trek_id": 1, "participants_count": 2}'
 ```
 
-### 4. Toggle Trek Status (Open/Closed only)
-Opening is allowed only if the trek is currently `Approved` or `Closed`.
+### 4. Simulate Payment
+Sets `payment_status = 'Paid'`.
 ```bash
-curl -X PUT http://127.0.0.1:5000/api/staff/treks/1/status \
-  -H "Authorization: Bearer <STAFF_TOKEN>" \
+curl -X POST http://127.0.0.1:5000/api/user/bookings/1/pay \
+  -H "Authorization: Bearer <USER_TOKEN>"
+```
+
+### 5. Cancel Booking & Restore Slots
+Only owner can cancel; restores slots back to the trek and creates a notification.
+```bash
+curl -X POST http://127.0.0.1:5000/api/user/bookings/1/cancel \
+  -H "Authorization: Bearer <USER_TOKEN>"
+```
+
+### 6. View My Bookings & History
+- Active/current bookings:
+```bash
+curl -X GET http://127.0.0.1:5000/api/user/bookings \
+  -H "Authorization: Bearer <USER_TOKEN>"
+```
+- Historical past/completed/cancelled bookings:
+```bash
+curl -X GET http://127.0.0.1:5000/api/user/history \
+  -H "Authorization: Bearer <USER_TOKEN>"
+```
+
+### 7. User Dashboard
+Available treks count, booked treks, and status counts.
+```bash
+curl -X GET http://127.0.0.1:5000/api/user/dashboard \
+  -H "Authorization: Bearer <USER_TOKEN>"
+```
+
+### 8. Notifications & Mark as Read
+- Fetch notifications:
+```bash
+curl -X GET http://127.0.0.1:5000/api/user/notifications \
+  -H "Authorization: Bearer <USER_TOKEN>"
+```
+- Mark all as read:
+```bash
+curl -X POST http://127.0.0.1:5000/api/user/notifications/read \
+  -H "Authorization: Bearer <USER_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"status": "Open"}'
+  -d '{}'
 ```
 
-### 5. Participant Roster / Manifest
-Returns list of registered users with name, phone, emergency contact, and booking status.
+### 9. CSV Export Trigger & Download
+- Trigger CSV export job (returns `202 Accepted`):
 ```bash
-curl -X GET http://127.0.0.1:5000/api/staff/treks/1/participants \
-  -H "Authorization: Bearer <STAFF_TOKEN>"
+curl -X POST http://127.0.0.1:5000/api/user/export \
+  -H "Authorization: Bearer <USER_TOKEN>"
 ```
-
-### 6. Mark Trek as Started
-Marks the trek as started (`is_started = True`) and notifies booked participants.
+- Download exported file (restricted to file owner):
 ```bash
-curl -X POST http://127.0.0.1:5000/api/staff/treks/1/start \
-  -H "Authorization: Bearer <STAFF_TOKEN>"
-```
-
-### 7. Mark Trek as Completed
-Sets the trek to `Completed` and automatically updates all 'Booked' bookings to `Completed`.
-```bash
-curl -X POST http://127.0.0.1:5000/api/staff/treks/1/complete \
-  -H "Authorization: Bearer <STAFF_TOKEN>"
-```
-
-### 8. Staff Multi-Tenancy Isolation Verification
-Staff A attempting to access Staff B's trek will be rejected with `403 Forbidden`:
-```bash
-curl -X PUT http://127.0.0.1:5000/api/staff/treks/2/slots \
-  -H "Authorization: Bearer <STAFF_A_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"total_slots": 30}'
-```
-*Expected response (403 Forbidden):*
-```json
-{
-  "data": null,
-  "message": "Access forbidden: you are not assigned to this trek.",
-  "success": false
-}
+curl -X GET "http://127.0.0.1:5000/api/user/exports/<filename>" \
+  -H "Authorization: Bearer <USER_TOKEN>"
 ```

@@ -175,6 +175,8 @@ class Booking(db.Model):
             'status': self.status,
             'payment_status': self.payment_status,
             'participants_count': self.participants_count,
+            'price_per_slot': self.trek.price if self.trek else 0.0,
+            'total_price': round(self.participants_count * (self.trek.price if self.trek else 0.0), 2),
             'cancelled_at': self.cancelled_at.isoformat() if self.cancelled_at else None
         }
 
