@@ -1,10 +1,70 @@
-/* TMA Custom Styles */
+/* TMA Custom Styles - Bootstrap 5 Enhancements */
+
 body {
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f8fafc;
+}
+
+#app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1 0 auto;
+}
+
+footer {
+    flex-shrink: 0;
 }
 
 .cursor-pointer {
     cursor: pointer;
 }
 
+/* Card & Shadow styling */
+.card {
+    transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.hover-shadow:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.1) !important;
+}
+
+/* Status Badges */
+.badge-status-Pending { background-color: #ffc107; color: #000; }
+.badge-status-Approved { background-color: #0dcaf0; color: #000; }
+.badge-status-Open { background-color: #198754; color: #fff; }
+.badge-status-Closed { background-color: #6c757d; color: #fff; }
+.badge-status-Completed { background-color: #0d6efd; color: #fff; }
+
+.badge-diff-Easy { background-color: #d1e7dd; color: #0f5132; }
+.badge-diff-Moderate { background-color: #cff4fc; color: #055160; }
+.badge-diff-Hard { background-color: #f8d7da; color: #842029; }
+
+/* Toast Notifications Container */
+.tma-toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    min-width: 300px;
+    max-width: 420px;
+}
+
+/* Charts responsive canvas wrapper */
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 320px;
+}
+
+/* Modal z-index enhancements */
+.modal-backdrop.show {
+    opacity: 0.5;
+}

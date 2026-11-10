@@ -39,6 +39,9 @@ python tma/test_phase6.py
 
 # Part 7: Celery Jobs (Async CSV Export, Daily Reminders, Monthly HTML Report, Manual Triggers)
 python tma/test_phase7.py
+
+# Part 8: Frontend Foundation & Admin UI (Vue 3, Vue Router, Bootstrap 5, Chart.js)
+python tma/test_phase8.py
 ```
 
 ### 3. Start the Flask Application
@@ -177,3 +180,47 @@ curl -X POST http://127.0.0.1:5000/api/admin/jobs/daily_reminders/run \
 curl -X POST http://127.0.0.1:5000/api/admin/jobs/monthly_report/run \
   -H "Authorization: Bearer <ADMIN_TOKEN>"
 ```
+
+---
+
+## Part 8: Frontend Foundation & Admin UI Architecture
+
+### 1. Technology & Architecture
+- **Single Entry Point:** `templates/index.html` is the only Jinja2 template. All UI interactions are rendered via Vue 3 Single Page Application (SPA) components.
+- **CDNs Only (Zero Node CLI / Build tools):**
+  - **Bootstrap 5 & Icons:** Responsive grid, tables, cards, and modals.
+  - **Vue 3:** Reactive composition and Options API components loaded via CDN.
+  - **Vue Router 4:** Client-side hash routing with role-based guards.
+  - **Chart.js:** Real-time analytics charts.
+
+### 2. Frontend Structure (`static/js/`)
+```
+static/
+  css/custom.css
+  js/
+    api.js               # Centralized fetch wrapper with Bearer token & 401 handling
+    router.js            # Route definitions & beforeEach role-based guards
+    app.js               # Vue 3 createApp & mount to #app
+    components/
+      Toast.js           # Global floating notification alerts
+      Navbar.js          # Responsive navigation bar with role badges & notifications
+      LoginPage.js       # Unified login for Admin, Staff, and User accounts
+      RegisterPage.js    # HTML5-validated user registration form
+      AdminView.js       # Top-level administrative navigation container
+      AdminDashboard.js  # Stat cards & Chart.js charts (popular treks & monthly trends)
+      AdminTreks.js      # Treks table, search, create/edit modal, delete, staff assignment
+      AdminStaff.js      # Staff directory, onboarding modal, and status toggles
+      AdminUsers.js      # User management, search, and deactivate/blacklist toggles
+      AdminBookings.js   # Global booking ledger with status & trek filters
+      AdminSearch.js     # Unified search portal querying /api/admin/search
+      Placeholders.js    # Base scaffolding for /treks, /staff, and /my-bookings
+```
+
+### 3. Route Guard Enforcement
+- Public Routes (`/login`, `/register`): Only accessible when logged out; logged-in users are automatically redirected to their role home.
+- Protected Routes:
+  - `/admin/*`: Restricted to `role='admin'`.
+  - `/staff`: Restricted to `role='staff'`.
+  - `/my-bookings`: Restricted to `role='user'`.
+  - `/profile`: Requires any active authentication.
+
