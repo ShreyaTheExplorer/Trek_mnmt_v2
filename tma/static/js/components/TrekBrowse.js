@@ -82,6 +82,28 @@ const TrekBrowse = {
     },
     template: `
     <div class="container py-4">
+        <!-- BoundlessTreks Hero Banner -->
+        <div class="boundless-hero rounded-4 p-4 p-md-5 mb-4 text-white shadow-sm position-relative overflow-hidden">
+            <div class="row align-items-center position-relative" style="z-index: 2;">
+                <div class="col-12 col-lg-9">
+                    <span class="badge px-3 py-2 rounded-pill mb-3 text-uppercase fw-bold" style="background: rgba(229, 173, 156, 0.2); color: #E5AD9C; border: 1px solid rgba(229, 173, 156, 0.4); font-size: 0.75rem;">
+                        <i class="bi bi-compass me-1"></i> BoundlessTreks Expeditions
+                    </span>
+                    <h1 class="display-6 fw-bold mb-3 text-white">
+                        Discover the Peak of <span style="color: #E5AD9C;">Himalayan Wilderness</span>
+                    </h1>
+                    <p class="lead mb-4 text-white-50 fs-6" style="max-width: 650px;">
+                        Certified alpine trails, high pass crossings, and pristine mountain lakes led by IMF-accredited mountain guides with real-time slot bookings.
+                    </p>
+                    <div class="d-flex flex-wrap gap-4 small text-white-75">
+                        <span class="d-flex align-items-center gap-1"><i class="bi bi-shield-check" style="color: #E5AD9C;"></i> IMF & UIAA Certified</span>
+                        <span class="d-flex align-items-center gap-1"><i class="bi bi-people" style="color: #D198C4;"></i> Small Group Expeditions</span>
+                        <span class="d-flex align-items-center gap-1"><i class="bi bi-tree" style="color: #E5AD9C;"></i> Leave No Trace Partner</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Explorer Header -->
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>

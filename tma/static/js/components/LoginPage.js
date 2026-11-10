@@ -56,11 +56,11 @@ const LoginPage = {
                 <div class="card shadow-sm border-0 rounded-3">
                     <div class="card-body p-4 p-sm-5">
                         <div class="text-center mb-4">
-                            <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex p-3 mb-3">
-                                <i class="bi bi-person-fill-lock fs-2"></i>
+                            <div class="brand-icon-wrapper rounded-circle d-inline-flex align-items-center justify-content-center p-3 mb-3 shadow-sm" style="width: 58px; height: 58px;">
+                                <i class="bi bi-compass-fill fs-2"></i>
                             </div>
-                            <h3 class="fw-bold text-dark">Account Login</h3>
-                            <p class="text-muted small">Sign in to your TMA Trekking account</p>
+                            <h3 class="fw-bold text-dark">Welcome to Boundless<span class="text-peach">Treks</span></h3>
+                            <p class="text-muted small">Sign in to manage your alpine expeditions & reservations</p>
                         </div>
 
                         <!-- Alert feedback -->

@@ -51,7 +51,7 @@ const RegisterPage = {
                 if (res && res.data) {
                     const { token, role, user } = res.data;
                     window.tmaApi.auth.setAuth(token, role, user);
-                    window.showToast("Registration successful! Welcome to TMA Treks.", "success");
+                    window.showToast("Registration successful! Welcome to BoundlessTreks.", "success");
                     this.$router.push('/treks');
                 }
             } catch (err) {
@@ -68,11 +68,11 @@ const RegisterPage = {
                 <div class="card shadow-sm border-0 rounded-3">
                     <div class="card-body p-4 p-sm-5">
                         <div class="text-center mb-4">
-                            <div class="bg-warning bg-opacity-10 text-warning rounded-circle d-inline-flex p-3 mb-3">
-                                <i class="bi bi-person-plus-fill fs-2 text-dark"></i>
+                            <div class="brand-icon-wrapper rounded-circle d-inline-flex align-items-center justify-content-center p-3 mb-3 shadow-sm" style="width: 58px; height: 58px;">
+                                <i class="bi bi-person-plus-fill fs-2"></i>
                             </div>
-                            <h3 class="fw-bold text-dark">Trekker Registration</h3>
-                            <p class="text-muted small">Create your account to browse and book trekking expeditions</p>
+                            <h3 class="fw-bold text-dark">Join Boundless<span class="text-peach">Treks</span></h3>
+                            <p class="text-muted small">Create your account to explore and book certified wilderness expeditions</p>
                         </div>
 
                         <!-- Feedback alerts -->

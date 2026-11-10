@@ -1,11 +1,32 @@
-/* TMA Custom Styles - Bootstrap 5 Enhancements */
+/* ==========================================================================
+   BoundlessTreks UI Theme System
+   Palette:
+   - Deep Navy Blue:            #0B2043
+   - Royal Blue:                #004797
+   - Muted Purple / Slate:      #6B609E
+   - Soft Orchid / Dusty Pink:  #D198C4
+   - Peach / Warm Nude:         #E5AD9C
+   ========================================================================== */
+
+:root {
+    --navy-deep: #0B2043;
+    --royal-blue: #004797;
+    --muted-purple: #6B609E;
+    --soft-orchid: #D198C4;
+    --peach: #E5AD9C;
+    --bg-light: #f5f7fb;
+    --card-bg: #ffffff;
+    --text-primary: #0B2043;
+    --text-muted: #5e6882;
+}
 
 body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: #f8fafc;
+    background-color: var(--bg-light);
+    color: var(--text-primary);
 }
 
 #app {
@@ -18,36 +39,242 @@ main {
     flex: 1 0 auto;
 }
 
-footer {
-    flex-shrink: 0;
+/* Headings & Text Color Overrides */
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+    color: var(--navy-deep);
+    font-weight: 700;
+}
+
+.text-navy { color: var(--navy-deep) !important; }
+.text-royal { color: var(--royal-blue) !important; }
+.text-purple { color: var(--muted-purple) !important; }
+.text-orchid { color: var(--soft-orchid) !important; }
+.text-peach { color: var(--peach) !important; }
+
+.bg-navy { background-color: var(--navy-deep) !important; color: #fff; }
+.bg-royal { background-color: var(--royal-blue) !important; color: #fff; }
+.bg-purple { background-color: var(--muted-purple) !important; color: #fff; }
+.bg-orchid { background-color: var(--soft-orchid) !important; }
+.bg-peach { background-color: var(--peach) !important; }
+
+/* -------------------------------------------------------------
+   Navbar Enhancements
+   ------------------------------------------------------------- */
+.navbar-dark.bg-dark {
+    background-color: var(--navy-deep) !important;
+    border-bottom: 2px solid var(--muted-purple);
+}
+
+.brand-icon-wrapper {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, var(--royal-blue), var(--muted-purple));
+    color: var(--peach);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+}
+
+.brand-text {
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.brand-accent {
+    color: var(--peach);
+}
+
+.navbar .nav-link {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85) !important;
+    transition: all 0.2s ease-in-out;
+}
+
+.navbar .nav-link:hover {
+    color: var(--peach) !important;
+}
+
+.navbar .nav-link.active {
+    color: var(--peach) !important;
+    font-weight: 700;
+}
+
+/* -------------------------------------------------------------
+   Buttons
+   ------------------------------------------------------------- */
+.btn-primary {
+    background-color: var(--royal-blue) !important;
+    border-color: var(--royal-blue) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--navy-deep) !important;
+    border-color: var(--navy-deep) !important;
+    box-shadow: 0 4px 12px rgba(0, 71, 151, 0.35) !important;
+}
+
+.btn-outline-primary {
+    color: var(--royal-blue) !important;
+    border-color: var(--royal-blue) !important;
+    font-weight: 600;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--royal-blue) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(0, 71, 151, 0.2) !important;
+}
+
+.btn-secondary {
+    background-color: var(--muted-purple) !important;
+    border-color: var(--muted-purple) !important;
+    color: #ffffff !important;
+}
+
+.btn-secondary:hover {
+    background-color: var(--navy-deep) !important;
+    border-color: var(--navy-deep) !important;
+}
+
+.btn-outline-secondary {
+    color: var(--muted-purple) !important;
+    border-color: var(--muted-purple) !important;
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--muted-purple) !important;
+    color: #ffffff !important;
+}
+
+.btn-warning {
+    background-color: var(--peach) !important;
+    border-color: var(--peach) !important;
+    color: var(--navy-deep) !important;
+    font-weight: 700 !important;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-warning:hover, .btn-warning:focus {
+    background-color: var(--soft-orchid) !important;
+    border-color: var(--soft-orchid) !important;
+    color: var(--navy-deep) !important;
+    box-shadow: 0 4px 12px rgba(229, 173, 156, 0.4) !important;
+}
+
+.btn-success {
+    background-color: var(--royal-blue) !important;
+    border-color: var(--royal-blue) !important;
+    color: #ffffff !important;
+}
+
+.btn-success:hover {
+    background-color: var(--navy-deep) !important;
+    border-color: var(--navy-deep) !important;
+}
+
+/* -------------------------------------------------------------
+   Hero Banner & Visual Accents
+   ------------------------------------------------------------- */
+.boundless-hero {
+    background: linear-gradient(135deg, var(--navy-deep) 0%, var(--royal-blue) 55%, var(--muted-purple) 100%);
+    border: 1px solid rgba(107, 96, 158, 0.3);
+}
+
+.boundless-hero::before {
+    content: "";
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 250px;
+    height: 250px;
+    background: radial-gradient(circle, rgba(209, 152, 196, 0.25) 0%, rgba(11, 32, 67, 0) 70%);
+    pointer-events: none;
+}
+
+/* -------------------------------------------------------------
+   Badges: Status & Difficulty
+   ------------------------------------------------------------- */
+.badge-status-Open { 
+    background-color: var(--royal-blue); 
+    color: #fff; 
+}
+.badge-status-Approved { 
+    background-color: var(--muted-purple); 
+    color: #fff; 
+}
+.badge-status-Pending { 
+    background-color: var(--peach); 
+    color: var(--navy-deep); 
+    font-weight: 600;
+}
+.badge-status-Closed { 
+    background-color: #6c757d; 
+    color: #fff; 
+}
+.badge-status-Completed { 
+    background-color: var(--navy-deep); 
+    color: var(--soft-orchid); 
+    border: 1px solid var(--soft-orchid); 
+}
+
+.badge-diff-Easy { 
+    background-color: #eaf2fb; 
+    color: var(--royal-blue); 
+    border: 1px solid #c2dbf9;
+}
+.badge-diff-Moderate { 
+    background-color: #f3f0f9; 
+    color: var(--muted-purple); 
+    border: 1px solid var(--soft-orchid);
+}
+.badge-diff-Hard { 
+    background-color: #fbf1ef; 
+    color: #b8432a; 
+    border: 1px solid var(--peach);
+}
+
+/* -------------------------------------------------------------
+   Nav Pills & Pagination
+   ------------------------------------------------------------- */
+.nav-pills .nav-link.active {
+    background-color: var(--royal-blue) !important;
+    color: #ffffff !important;
+}
+
+.page-item.active .page-link {
+    background-color: var(--royal-blue) !important;
+    border-color: var(--royal-blue) !important;
+    color: #ffffff !important;
+}
+
+.page-link {
+    color: var(--royal-blue);
+}
+
+/* -------------------------------------------------------------
+   Cards & Shadows
+   ------------------------------------------------------------- */
+.card {
+    transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.hover-shadow:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 .75rem 1.5rem rgba(11, 32, 67, .1) !important;
 }
 
 .cursor-pointer {
     cursor: pointer;
 }
 
-/* Card & Shadow styling */
-.card {
-    transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.hover-shadow:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 .5rem 1rem rgba(0,0,0,.1) !important;
-}
-
-/* Status Badges */
-.badge-status-Pending { background-color: #ffc107; color: #000; }
-.badge-status-Approved { background-color: #0dcaf0; color: #000; }
-.badge-status-Open { background-color: #198754; color: #fff; }
-.badge-status-Closed { background-color: #6c757d; color: #fff; }
-.badge-status-Completed { background-color: #0d6efd; color: #fff; }
-
-.badge-diff-Easy { background-color: #d1e7dd; color: #0f5132; }
-.badge-diff-Moderate { background-color: #cff4fc; color: #055160; }
-.badge-diff-Hard { background-color: #f8d7da; color: #842029; }
-
-/* Toast Notifications Container */
+/* -------------------------------------------------------------
+   Toast Notifications Container
+   ------------------------------------------------------------- */
 .tma-toast-container {
     position: fixed;
     top: 20px;
@@ -62,14 +289,68 @@ footer {
     pointer-events: auto;
 }
 
-/* Charts responsive canvas wrapper */
+/* -------------------------------------------------------------
+   Realistic Multi-Column Footer
+   ------------------------------------------------------------- */
+.boundless-footer {
+    background-color: var(--navy-deep) !important;
+    border-top: 3px solid var(--muted-purple);
+    color: #e2e8f0;
+}
+
+.footer-top-strip {
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+.footer-bottom-strip {
+    background-color: rgba(0, 0, 0, 0.25);
+}
+
+.border-white-10 {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.footer-link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+}
+
+.footer-link:hover {
+    color: var(--peach) !important;
+    padding-left: 4px;
+}
+
+.social-icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--peach);
+    transition: all 0.2s ease-in-out;
+    text-decoration: none;
+}
+
+.social-icon-btn:hover {
+    background: var(--royal-blue);
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
+.tracking-wider {
+    letter-spacing: 0.06em;
+}
+
+/* Modal z-index */
+.modal-backdrop.show {
+    opacity: 0.55;
+}
+
 .chart-container {
     position: relative;
     width: 100%;
     height: 320px;
-}
-
-/* Modal z-index enhancements */
-.modal-backdrop.show {
-    opacity: 0.5;
 }

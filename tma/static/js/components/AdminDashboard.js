@@ -76,15 +76,15 @@ const AdminDashboard = {
                             {
                                 label: 'Bookings Count',
                                 data: bookingCounts.length ? bookingCounts : [0],
-                                backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                                borderColor: 'rgba(54, 162, 235, 1)',
+                                backgroundColor: 'rgba(0, 71, 151, 0.8)',
+                                borderColor: '#004797',
                                 borderWidth: 1
                             },
                             {
                                 label: 'Total Participants',
                                 data: participantCounts.length ? participantCounts : [0],
-                                backgroundColor: 'rgba(255, 159, 64, 0.7)',
-                                borderColor: 'rgba(255, 159, 64, 1)',
+                                backgroundColor: 'rgba(229, 173, 156, 0.85)',
+                                borderColor: '#E5AD9C',
                                 borderWidth: 1
                             }
                         ]
@@ -120,8 +120,8 @@ const AdminDashboard = {
                             {
                                 label: 'Bookings Volume',
                                 data: counts.length ? counts : [0],
-                                borderColor: '#0d6efd',
-                                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                                borderColor: '#004797',
+                                backgroundColor: 'rgba(0, 71, 151, 0.12)',
                                 fill: true,
                                 tension: 0.3,
                                 yAxisID: 'y'
@@ -129,8 +129,8 @@ const AdminDashboard = {
                             {
                                 label: 'Revenue (₹)',
                                 data: revenues.length ? revenues : [0],
-                                borderColor: '#198754',
-                                backgroundColor: 'transparent',
+                                borderColor: '#6B609E',
+                                backgroundColor: 'rgba(107, 96, 158, 0.05)',
                                 borderDash: [5, 5],
                                 tension: 0.3,
                                 yAxisID: 'y1'

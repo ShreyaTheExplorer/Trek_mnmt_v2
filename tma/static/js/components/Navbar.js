@@ -128,8 +128,10 @@ const Navbar = {
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow sticky-top">
         <div class="container">
             <router-link to="/treks" class="navbar-brand d-flex align-items-center gap-2 fw-bold fs-4">
-                <i class="bi bi-compass-fill text-warning"></i>
-                <span class="text-white">TMA <span class="text-warning">Treks</span></span>
+                <div class="brand-icon-wrapper rounded-circle d-flex align-items-center justify-content-center shadow-sm">
+                    <i class="bi bi-compass-fill"></i>
+                </div>
+                <span class="text-white brand-text">Boundless<span class="brand-accent">Treks</span></span>
             </router-link>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
