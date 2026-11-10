@@ -4,7 +4,7 @@ from flask import Blueprint, request, g, send_from_directory, current_app
 from extensions import db
 from models import Trek, Booking, Notification, User
 from auth import api_response, login_required, role_required
-from cache import invalidate_trek_cache
+from cache import invalidate_trek_cache, get_json, set_json, cache_response
 
 user_bp = Blueprint('user', __name__, url_prefix='/api/user')
 
@@ -45,6 +45,12 @@ def list_treks():
     except (TypeError, ValueError):
         per_page = 10
 
+    # Build unique cache key from query parameters
+    cache_key = f"treks:user:q={q}:loc={location}:diff={difficulty}:min={min_days}:max={max_days}:st={status_filter}:p={page}:pp={per_page}"
+    cached_payload = get_json(cache_key)
+    if cached_payload is not None:
+        return cache_response(cached_payload, cache_hit=True, status_code=200)
+
     # Base query: non-deleted, only Approved or Open
     query = Trek.query.filter(
         Trek.is_deleted == False,
@@ -84,10 +90,10 @@ def list_treks():
     offset = (page - 1) * per_page
     treks = query.offset(offset).limit(per_page).all()
 
-    return api_response(
-        True,
-        "Available treks retrieved.",
-        {
+    payload = {
+        'success': True,
+        'message': "Available treks retrieved.",
+        'data': {
             'treks': [t.to_dict() for t in treks],
             'pagination': {
                 'page': page,
@@ -97,9 +103,13 @@ def list_treks():
                 'has_prev': page > 1,
                 'has_next': page < total_pages
             }
-        },
-        200
-    )
+        }
+    }
+
+    # Store in Redis cache (TTL 180s, within 60-300s)
+    set_json(cache_key, payload, ttl=180)
+
+    return cache_response(payload, cache_hit=False, status_code=200)
 
 
 @user_bp.route('/treks/<int:trek_id>', methods=['GET'])
@@ -109,12 +119,27 @@ def get_trek(trek_id):
     """
     Get single trek details.
     Must be Approved or Open, and not deleted.
+    Cached with TTL 300s.
     """
+    cache_key = f"trek:detail:{trek_id}"
+    cached_payload = get_json(cache_key)
+    if cached_payload is not None:
+        return cache_response(cached_payload, cache_hit=True, status_code=200)
+
     trek = db.session.get(Trek, trek_id)
     if not trek or trek.is_deleted or trek.status not in ['Approved', 'Open']:
         return api_response(False, "Trek not found or not available.", None, 404)
 
-    return api_response(True, "Trek details retrieved.", trek.to_dict(), 200)
+    payload = {
+        'success': True,
+        'message': "Trek details retrieved.",
+        'data': trek.to_dict()
+    }
+
+    # Cache single trek details with TTL 300s
+    set_json(cache_key, payload, ttl=300)
+
+    return cache_response(payload, cache_hit=False, status_code=200)
 
 
 # -------------------------------------------------------------
@@ -250,6 +275,10 @@ def simulate_payment(booking_id):
     )
     db.session.add(notif)
     db.session.commit()
+
+    # Invalidate cache hook
+    if booking.trek_id:
+        invalidate_trek_cache(booking.trek_id)
 
     return api_response(
         True,

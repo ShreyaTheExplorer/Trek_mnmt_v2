@@ -5,7 +5,7 @@ from flask import Blueprint, request, g
 from extensions import db
 from models import User, StaffProfile, Trek, Booking, Notification
 from auth import api_response, login_required, role_required
-from cache import invalidate_trek_cache
+from cache import invalidate_trek_cache, get_json, set_json, cache_response
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -22,7 +22,13 @@ def get_dashboard():
     """
     Summary metrics: total treks, total users, total staff, total bookings,
     plus counts of treks by status and bookings by status.
+    Cached in Redis with TTL 60s.
     """
+    cache_key = "admin:dashboard"
+    cached = get_json(cache_key)
+    if cached is not None:
+        return cache_response(cached, cache_hit=True, status_code=200)
+
     total_treks = Trek.query.filter_by(is_deleted=False).count()
     total_users = User.query.filter_by(role='user').count()
     total_staff = User.query.filter_by(role='staff').count()
@@ -54,10 +60,10 @@ def get_dashboard():
         for b in all_bookings if b.status in ['Booked', 'Completed'] and b.trek
     )
 
-    return api_response(
-        True,
-        "Admin dashboard metrics retrieved.",
-        {
+    payload = {
+        'success': True,
+        'message': "Admin dashboard metrics retrieved.",
+        'data': {
             'total_treks': total_treks,
             'total_users': total_users,
             'total_staff': total_staff,
@@ -65,9 +71,11 @@ def get_dashboard():
             'total_revenue': round(revenue, 2),
             'treks_by_status': treks_by_status,
             'bookings_by_status': bookings_by_status
-        },
-        200
-    )
+        }
+    }
+
+    set_json(cache_key, payload, ttl=60)
+    return cache_response(payload, cache_hit=False, status_code=200)
 
 
 # -------------------------------------------------------------
@@ -742,7 +750,13 @@ def get_stats():
     Analytics stats: popular treks (top by booking count),
     bookings per month, and users participated.
     Returns chart-ready arrays for easy Chart.js integration.
+    Cached in Redis with TTL 120s.
     """
+    cache_key = "admin:stats"
+    cached = get_json(cache_key)
+    if cached is not None:
+        return cache_response(cached, cache_hit=True, status_code=200)
+
     all_bookings = Booking.query.all()
 
     # 1. Popular treks (top by active/completed bookings)
@@ -786,13 +800,15 @@ def get_stats():
         for st in ['Booked', 'Completed', 'Cancelled']
     ]
 
-    return api_response(
-        True,
-        "Chart-ready analytics retrieved.",
-        {
+    payload = {
+        'success': True,
+        'message': "Chart-ready analytics retrieved.",
+        'data': {
             'popular_treks': popular_treks,
             'bookings_per_month': bookings_per_month,
             'users_participated': users_participated
-        },
-        200
-    )
+        }
+    }
+
+    set_json(cache_key, payload, ttl=120)
+    return cache_response(payload, cache_hit=False, status_code=200)
