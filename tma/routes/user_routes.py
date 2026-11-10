@@ -495,30 +495,109 @@ def mark_notifications_read():
 
 
 # -------------------------------------------------------------
-# 6. CSV Export Trigger (Stub for Part 7) & File Download
+# 6. CSV Export Trigger (Async via Celery) & Status / Download
 # -------------------------------------------------------------
 @user_bp.route('/export', methods=['POST'])
 @login_required
 @role_required('user')
 def trigger_export():
     """
-    Triggers the CSV export job (stub that returns 202 for now, wired in Part 7).
+    Triggers the CSV export job.
+    Dispatches Celery background task with fallback to direct execution.
+    Returns 202 Accepted with task_id.
     """
-    timestamp = int(datetime.utcnow().timestamp())
-    job_id = f"export_{g.current_user.id}_{timestamp}"
-    filename = f"bookings_user_{g.current_user.id}_{timestamp}.csv"
+    user_id = g.current_user.id
+    try:
+        from tasks import export_bookings_csv
+        async_result = export_bookings_csv.delay(user_id)
+        task_id = str(async_result.id)
+        return api_response(
+            True,
+            "CSV export request accepted and scheduled for processing.",
+            {
+                'status': 'processing',
+                'task_id': task_id,
+                'job_id': task_id
+            },
+            202
+        )
+    except Exception as e:
+        # Fallback to direct synchronous execution if Celery broker/worker is offline
+        from tasks import export_bookings_csv
+        result = export_bookings_csv(user_id)
+        task_id = f"direct_{result.get('filename')}"
+        return api_response(
+            True,
+            "CSV export request executed synchronously (direct mode).",
+            {
+                'status': 'processing',
+                'task_id': task_id,
+                'job_id': task_id,
+                'result': result
+            },
+            202
+        )
 
-    # In Part 7, this will enqueue a Celery task: export_user_bookings_task.delay(user_id)
-    return api_response(
-        True,
-        "CSV export request accepted and scheduled for processing.",
-        {
-            'status': 'processing',
-            'job_id': job_id,
-            'expected_filename': filename
-        },
-        202
-    )
+
+@user_bp.route('/export/<task_id>', methods=['GET'])
+@login_required
+@role_required('user')
+def get_export_status(task_id):
+    """
+    Polls the status of an async Celery export job.
+    Returns task status, result, and download link when ready.
+    """
+    # Direct fallback task check
+    if task_id.startswith('direct_'):
+        filename = task_id.replace('direct_', '')
+        download_url = f"/api/user/exports/{filename}"
+        return api_response(
+            True,
+            "Export task status retrieved.",
+            {
+                'task_id': task_id,
+                'status': 'SUCCESS',
+                'ready': True,
+                'download_url': download_url,
+                'filename': filename
+            },
+            200
+        )
+
+    try:
+        from celery_app import celery
+        from celery.result import AsyncResult
+        res = AsyncResult(task_id, app=celery)
+
+        status = res.status
+        is_ready = res.ready()
+        task_result = res.result if is_ready else None
+
+        response_data = {
+            'task_id': task_id,
+            'status': status,
+            'ready': is_ready,
+            'result': task_result if not isinstance(task_result, Exception) else str(task_result)
+        }
+        if is_ready and isinstance(task_result, dict):
+            if 'download_url' in task_result:
+                response_data['download_url'] = task_result['download_url']
+            if 'filename' in task_result:
+                response_data['filename'] = task_result['filename']
+
+        return api_response(
+            True,
+            f"Export task status: {status}.",
+            response_data,
+            200
+        )
+    except Exception as e:
+        return api_response(
+            False,
+            f"Could not retrieve task status: {str(e)}",
+            {'task_id': task_id, 'status': 'UNKNOWN'},
+            500
+        )
 
 
 @user_bp.route('/exports/<path:filename>', methods=['GET'])

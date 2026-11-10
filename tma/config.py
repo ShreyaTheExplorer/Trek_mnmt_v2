@@ -35,6 +35,10 @@ class Config:
 
     # Webhook Settings
     WEBHOOK_URL = os.environ.get('WEBHOOK_URL', 'http://localhost:5000/webhook')
+    GOOGLE_CHAT_WEBHOOK_URL = os.environ.get('GOOGLE_CHAT_WEBHOOK_URL', None)
+
+    # Job Settings
+    REMINDER_DAYS_AHEAD = int(os.environ.get('REMINDER_DAYS_AHEAD', 2))
 
     # Exports Directory
     EXPORTS_DIR = os.path.join(BASE_DIR, 'exports')

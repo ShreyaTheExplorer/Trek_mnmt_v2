@@ -36,6 +36,9 @@ python tma/test_phase5.py
 
 # Part 6: Redis Caching (Keys, TTLs, Invalidation, X-Cache HIT/MISS Headers, Latency Speedup)
 python tma/test_phase6.py
+
+# Part 7: Celery Jobs (Async CSV Export, Daily Reminders, Monthly HTML Report, Manual Triggers)
+python tma/test_phase7.py
 ```
 
 ### 3. Start the Flask Application
@@ -93,3 +96,84 @@ curl -s -w "\nHTTP: %{http_code} | Total Time: %{time_total}s | X-Cache: HIT\n" 
 | **Initial Request (MISS)** | `X-Cache: MISS` | `69.13 ms` | Database Query + Serialization + Cache Write |
 | **Cached Request (HIT)** | `X-Cache: HIT` | `27.34 ms` | Direct Cache Retrieval (`2.5x` speedup) |
 | **After Trek Booking (Invalidated)** | `X-Cache: MISS` | `71.20 ms` | Cache purged by mutation; fresh data re-cached |
+
+---
+
+## Part 7: Celery Jobs & Batch Processing Architecture
+
+### 1. Celery Architecture & Scheduling (`celery_app.py`, `tasks.py`)
+Celery is configured with the Flask application context using Redis as both broker and result backend.
+- **Broker:** `redis://localhost:6379/1`
+- **Result Backend:** `redis://localhost:6379/2`
+
+### 2. Commands to Start TMA Infrastructure
+
+#### Terminal 1: Redis Server
+```powershell
+# Start local Redis server
+redis-server
+```
+
+#### Terminal 2: Celery Worker
+```powershell
+# Windows requires '-P solo' or 'threads' for Celery pool execution
+.venv\Scripts\activate
+celery -A celery_app.celery worker -l info -P solo
+```
+
+#### Terminal 3: Celery Beat (Periodic Scheduler)
+```powershell
+# Runs daily reminders and monthly report on cron schedules
+.venv\Scripts\activate
+celery -A celery_app.celery beat -l info
+```
+
+#### Terminal 4: Flask API Application
+```powershell
+.venv\Scripts\activate
+python tma/app.py
+```
+
+---
+
+### 3. Asynchronous & Scheduled Tasks
+
+#### Task 1: Asynchronous User Bookings CSV Export (`export_bookings_csv`)
+- **Trigger:** `POST /api/user/export` (Returns `202 Accepted` with `task_id`).
+- **Processing:** Asynchronously queries the authenticated user's bookings, builds a CSV with exact required columns:
+  - `User ID, Trek Name, Location, Booking Status, Booking Date, Trek Start Date, Trek End Date`
+- **Storage:** Saved to `exports/bookings_user_<user_id>_<timestamp>.csv`.
+- **Completion Alert:** Emits an in-app `Notification`: *"Your export is ready. Download link: /api/user/exports/<filename>"*.
+- **Status Check:** `GET /api/user/export/<task_id>` returns task status, result, and download link.
+- **Secure Download:** `GET /api/user/exports/<filename>` validates ownership, allowing only the file owner to download (others receive `403 Forbidden`).
+
+#### Task 2: Scheduled Daily Reminders (`daily_reminders`)
+- **Schedule:** Daily at `08:00 UTC` (crontab: `0 8 * * *`, configurable via `REMINDER_CRON_HOUR`).
+- **Logic:** Identifies `Booked` bookings for treks scheduled to start within the next `N` days (default `2` days, configurable via `REMINDER_DAYS_AHEAD`).
+- **Notification Channels:**
+  1. **In-App Notification:** Recorded in database with trek instructions and itinerary details.
+  2. **Google Chat Webhook:** Dispatched via HTTP POST to `GOOGLE_CHAT_WEBHOOK_URL` if configured.
+  3. **SMTP Email:** Dispatched via `smtplib` to `user.email` (configured via `MAIL_SERVER` / `MAIL_PORT`, default `localhost:1025`).
+  4. **Fallback:** If an external channel is offline or unconfigured, the message is logged to the console instead of failing.
+
+#### Task 3: Scheduled Monthly Activity Report (`monthly_report`)
+- **Schedule:** 1st day of every month at `00:00 UTC` (crontab: `0 0 1 * *`).
+- **Logic:** Compiles metrics for the preceding month:
+  - Total treks conducted (`Completed` in that month).
+  - Unique trekkers participating.
+  - Top 5 popular treks ranked by booking and participant counts.
+- **Output:** Formats an executive HTML report with responsive inline-CSS styles, saves a permanent archive copy in `exports/monthly_report_YYYY_MM.html`, sends an HTML email to the admin, and issues an in-app admin alert.
+
+---
+
+### 4. Admin Manual Job Execution (`POST /api/admin/jobs/<name>/run`)
+Administrators can trigger batch jobs on demand for testing, auditing, or immediate dispatch:
+```bash
+# Run daily reminders immediately:
+curl -X POST http://127.0.0.1:5000/api/admin/jobs/daily_reminders/run \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+
+# Run monthly activity report immediately:
+curl -X POST http://127.0.0.1:5000/api/admin/jobs/monthly_report/run \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```

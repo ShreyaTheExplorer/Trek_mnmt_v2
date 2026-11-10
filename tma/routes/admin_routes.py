@@ -812,3 +812,62 @@ def get_stats():
 
     set_json(cache_key, payload, ttl=120)
     return cache_response(payload, cache_hit=False, status_code=200)
+
+
+# -------------------------------------------------------------
+# 8. Batch / Celery Jobs Manual Execution
+# -------------------------------------------------------------
+@admin_bp.route('/jobs/<name>/run', methods=['POST'])
+@login_required
+@role_required('admin')
+def run_job_manually(name):
+    """
+    Allows admin to trigger batch / Celery jobs manually on demand.
+    Supported job names: 'daily_reminders', 'monthly_report'.
+    """
+    valid_jobs = ['daily_reminders', 'monthly_report']
+    if name not in valid_jobs:
+        return api_response(
+            False,
+            f"Invalid job name '{name}'. Allowed jobs: {', '.join(valid_jobs)}.",
+            None,
+            400
+        )
+
+    try:
+        from tasks import daily_reminders, monthly_report
+        target_fn = daily_reminders if name == 'daily_reminders' else monthly_report
+
+        # Try to enqueue asynchronously with Celery
+        try:
+            async_res = target_fn.delay()
+            return api_response(
+                True,
+                f"Job '{name}' queued for background execution.",
+                {
+                    'job': name,
+                    'mode': 'async',
+                    'task_id': str(async_res.id)
+                },
+                202
+            )
+        except Exception:
+            # Fallback to direct synchronous execution if Celery broker is offline
+            result = target_fn()
+            return api_response(
+                True,
+                f"Job '{name}' executed successfully (direct mode).",
+                {
+                    'job': name,
+                    'mode': 'sync',
+                    'result': result
+                },
+                200
+            )
+    except Exception as e:
+        return api_response(
+            False,
+            f"Failed to execute job '{name}': {str(e)}",
+            None,
+            500
+        )
