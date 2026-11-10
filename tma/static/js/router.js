@@ -34,7 +34,7 @@ const routes = [
     {
         path: '/treks',
         name: 'TreksCatalog',
-        component: window.TrekkerCatalogPlaceholder
+        component: window.TrekkerCatalog || window.TrekkerCatalogPlaceholder
     },
     {
         path: '/my-bookings',
@@ -45,7 +45,13 @@ const routes = [
     {
         path: '/staff',
         name: 'StaffDashboard',
-        component: window.StaffDashboardPlaceholder,
+        component: window.StaffDashboard || window.StaffDashboardPlaceholder,
+        meta: { requiresAuth: true, roles: ['staff'] }
+    },
+    {
+        path: '/staff/treks/:id',
+        name: 'StaffTrekDetail',
+        component: window.StaffTrekDetail,
         meta: { requiresAuth: true, roles: ['staff'] }
     },
     {

@@ -42,6 +42,9 @@ python tma/test_phase7.py
 
 # Part 8: Frontend Foundation & Admin UI (Vue 3, Vue Router, Bootstrap 5, Chart.js)
 python tma/test_phase8.py
+
+# Part 9: Staff UI & Expedition Operations (StaffDashboard, StaffTrekDetail, Manifest, Slot Controls)
+python tma/test_phase9.py
 ```
 
 ### 3. Start the Flask Application
@@ -223,4 +226,33 @@ static/
   - `/staff`: Restricted to `role='staff'`.
   - `/my-bookings`: Restricted to `role='user'`.
   - `/profile`: Requires any active authentication.
+
+---
+
+## Part 9: Staff UI & Expedition Operations Architecture
+
+### 1. Staff Components
+- **`StaffDashboard.js` (`/staff`)**:
+  - Displays summary cards for each assigned trek showing:
+    - Registered-user / trekker count (`total_participants`).
+    - Status badge (`Pending`, `Approved`, `Open`, `Closed`, `Completed`).
+    - Start and end dates, duration in days.
+    - Slot availability (`available_slots / total_slots`).
+    - Expedition in-progress flag (`is_started`).
+  - Direct navigation link to `/staff/treks/:id`.
+- **`StaffTrekDetail.js` (`/staff/treks/:id`)**:
+  - **Slot Capacities Editor**:
+    - Validates that available slots is a non-negative integer (`>= 0`).
+    - Enforces that total capacity cannot be decreased below currently booked participants.
+  - **Open / Closed Toggle**:
+    - Switches intake status between `Open` and `Closed`.
+  - **Expedition Lifecycle Controls**:
+    - **"Start Trek" Button**: Triggers confirmation dialog; sets `is_started = True`.
+    - **"Mark Completed" Button**: Triggers confirmation dialog; sets trek status to `Completed` and automatically updates all enrolled participant bookings to `Completed`.
+  - **Participant Manifest Table**:
+    - Roster of enrolled trekkers showing Name, Email, Phone, Emergency Contact, and Booking Status.
+  - **Friendly Error Handling**:
+    - `403 Forbidden`: Displays clear message that staff members are restricted to managing only treks assigned directly to them.
+    - `409 Conflict`: Displays contextual conflict explanation.
+
 
