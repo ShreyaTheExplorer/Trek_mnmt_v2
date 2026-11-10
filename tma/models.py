@@ -98,6 +98,7 @@ class Trek(db.Model):
     price = db.Column(db.Float, nullable=False, default=0.0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     is_deleted = db.Column(db.Boolean, default=False, nullable=False) # Soft delete flag
+    is_started = db.Column(db.Boolean, default=False, nullable=False) # Trek started flag
 
     # Relationships
     bookings = db.relationship('Booking', backref='trek', lazy='dynamic', cascade='all, delete-orphan')
@@ -130,6 +131,7 @@ class Trek(db.Model):
             'instructions': self.instructions,
             'price': self.price,
             'is_deleted': self.is_deleted,
+            'is_started': self.is_started,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 

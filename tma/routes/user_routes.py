@@ -3,6 +3,7 @@ from flask import Blueprint, request, g
 from extensions import db
 from models import Trek, Booking, Notification, User
 from auth import api_response, login_required
+from cache import invalidate_trek_cache
 
 user_bp = Blueprint('user', __name__, url_prefix='/api')
 
@@ -151,6 +152,9 @@ def create_booking():
     db.session.add(notification)
     db.session.commit()
 
+    # Invalidate cache hook
+    invalidate_trek_cache(trek.id)
+
     return api_response(
         True,
         "Trek booked successfully.",
@@ -230,6 +234,10 @@ def cancel_booking(booking_id):
     )
     db.session.add(notification)
     db.session.commit()
+
+    # Invalidate cache hook
+    if trek:
+        invalidate_trek_cache(trek.id)
 
     return api_response(
         True,

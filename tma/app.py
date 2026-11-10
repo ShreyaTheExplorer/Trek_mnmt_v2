@@ -50,6 +50,16 @@ def create_app(config_class=Config):
         # Programmatic schema creation
         db.create_all()
 
+        # Ensure column migrations for existing SQLite tables
+        try:
+            with db.engine.connect() as conn:
+                cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(treks);").fetchall()]
+                if 'is_started' not in cols:
+                    conn.exec_driver_sql("ALTER TABLE treks ADD COLUMN is_started BOOLEAN DEFAULT 0;")
+                    conn.commit()
+        except Exception:
+            pass
+
         # Seed exactly one admin if no admin exists
         existing_admin = User.query.filter_by(role='admin').first()
         if not existing_admin:
