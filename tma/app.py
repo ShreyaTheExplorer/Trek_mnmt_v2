@@ -61,9 +61,9 @@ def create_app(config_class=Config):
             pass
 
         # Seed exactly one admin if no admin exists
-        existing_admin = User.query.filter_by(role='admin').first()
+        admin_email = app.config.get('ADMIN_EMAIL', 'admin@tma.com')
+        existing_admin = User.query.filter((User.role == 'admin') | (User.email == admin_email)).first()
         if not existing_admin:
-            admin_email = app.config.get('ADMIN_EMAIL', 'admin@tma.com')
             admin_password = app.config.get('ADMIN_PASSWORD', 'admin123')
             admin_name = app.config.get('ADMIN_NAME', 'System Administrator')
 
@@ -75,8 +75,18 @@ def create_app(config_class=Config):
             )
             admin.set_password(admin_password)
             db.session.add(admin)
+            try:
+                db.session.commit()
+                print(f"[TMA Seeder] Programmatically seeded initial admin: {admin_email}")
+            except Exception:
+                db.session.rollback()
+        else:
+            if existing_admin.role != 'admin':
+                existing_admin.role = 'admin'
+            admin_name = app.config.get('ADMIN_NAME', 'System Administrator')
+            if existing_admin.name != admin_name:
+                existing_admin.name = admin_name
             db.session.commit()
-            print(f"[TMA Seeder] Programmatically seeded initial admin: {admin_email}")
 
     # Health check endpoint
     @app.route('/api/health', methods=['GET'])
