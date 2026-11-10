@@ -10,38 +10,6 @@ A complete Trekking Management Application built according to MAD-2 project cons
 
 ---
 
-## Part 1 & Part 2 Deliverables
-
-### Project Structure
-```
-tma/
-  app.py               # Flask app factory, route registration, programmatic DB & seeder
-  config.py            # Environment-aware configuration (tma.db, Redis, Mail, Webhook)
-  extensions.py        # SQLAlchemy db and Redis client
-  models.py            # User, StaffProfile, Trek, Booking, Notification models
-  auth.py              # Password hashing, JWT tokens, login_required, role_required
-  routes/
-    auth_routes.py     # Register, Login, Me (GET & PUT)
-    admin_routes.py    # Admin management & dashboard endpoints
-    staff_routes.py    # Staff operations
-    user_routes.py     # Trekker browsing and bookings
-  cache.py             # Redis caching layer
-  celery_app.py        # Celery application
-  tasks.py             # Background jobs & CSV export tasks
-  templates/
-    index.html         # Single Jinja2 entry point (Bootstrap 5 + Vue mount point)
-  static/
-    css/custom.css     # TMA custom styles
-    js/
-  exports/             # Generated CSV exports directory
-  requirements.txt     # Python dependencies
-  test_phase1.py       # Part 1 self-test suite
-  test_phase2.py       # Part 2 self-test suite
-  README.md            # Documentation & instructions
-```
-
----
-
 ## Running the Application & Tests
 
 ### 1. Activate Environment
@@ -56,6 +24,9 @@ python tma/test_phase1.py
 
 # Part 2: Auth, validations, token generation, profile update, RBAC
 python tma/test_phase2.py
+
+# Part 3: Admin API (Treks CRUD, Staff, Assignment, Users, Bookings, Search, Stats)
+python tma/test_phase3.py
 ```
 
 ### 3. Start the Flask Application
@@ -66,93 +37,102 @@ App runs at: `http://127.0.0.1:5000`
 
 ---
 
-## Part 2: Authentication & RBAC cURL Reference
+## Part 3: Admin API cURL Reference
 
-### 1. Register a New User (Trekkers Only)
-> **Rule:** Only `user` accounts can self-register. The `role` field is strictly forced to `'user'`.
-```bash
-curl -X POST http://127.0.0.1:5000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Pooja Verma",
-    "email": "pooja@example.com",
-    "password": "password123",
-    "phone": "+91 9876543210",
-    "age": 25,
-    "emergency_contact": "9876543211",
-    "address": "Park Street, Kolkata"
-  }'
-```
+All admin routes require `Authorization: Bearer <ADMIN_TOKEN>`.
 
-### 2. Login (Works for all three roles)
-#### A. User Login:
-```bash
-curl -X POST http://127.0.0.1:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "pooja@example.com",
-    "password": "password123"
-  }'
-```
-
-#### B. Admin Login:
-```bash
-curl -X POST http://127.0.0.1:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@tma.com",
-    "password": "admin123"
-  }'
-```
-
-### 3. Get Current User Profile (`GET /api/auth/me`)
-```bash
-curl -X GET http://127.0.0.1:5000/api/auth/me \
-  -H "Authorization: Bearer <YOUR_TOKEN>"
-```
-
-### 4. Update Profile & Change Password (`PUT /api/auth/me`)
-```bash
-curl -X PUT http://127.0.0.1:5000/api/auth/me \
-  -H "Authorization: Bearer <YOUR_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Pooja V. Sharma",
-    "phone": "+91 9876500000",
-    "age": 26,
-    "current_password": "password123",
-    "new_password": "newpassword456"
-  }'
-```
-
-### 5. Role-Based Access Control (RBAC) Verification
-#### A. User token accessing Admin route -> **403 Forbidden**
-```bash
-curl -X GET http://127.0.0.1:5000/api/admin/dashboard \
-  -H "Authorization: Bearer <USER_TOKEN>"
-```
-*Expected response (403 Forbidden):*
-```json
-{
-  "data": null,
-  "message": "Access forbidden: role 'user' is not authorized to access this resource.",
-  "success": false
-}
-```
-
-#### B. Admin token accessing Admin route -> **200 OK**
+### 1. Dashboard Overview
 ```bash
 curl -X GET http://127.0.0.1:5000/api/admin/dashboard \
   -H "Authorization: Bearer <ADMIN_TOKEN>"
 ```
-*Expected response (200 OK):*
-```json
-{
-  "data": {
-    "recent_bookings": [],
-    "stats": { ... }
-  },
-  "message": "Admin dashboard statistics retrieved.",
-  "success": true
-}
+
+### 2. Create a Trek (Sets `available_slots = total_slots`)
+```bash
+curl -X POST http://127.0.0.1:5000/api/admin/treks \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Hampta Pass Trek",
+    "location": "Manali, Himachal Pradesh",
+    "difficulty": "Moderate",
+    "duration_days": 5,
+    "total_slots": 20,
+    "price": 11500.0,
+    "start_date": "2026-11-20",
+    "end_date": "2026-11-25",
+    "description": "Dramatic crossover trek from lush Kullu valley to arid Spiti.",
+    "instructions": "Carry windproof jacket and gaiters.",
+    "status": "Pending"
+  }'
+```
+
+### 3. Update Trek / Transition Status (`Pending` → `Approved` → `Open`)
+```bash
+curl -X PUT http://127.0.0.1:5000/api/admin/treks/1 \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "Open",
+    "price": 12000.0
+  }'
+```
+
+### 4. Create Staff (Creates `User` + `StaffProfile`)
+```bash
+curl -X POST http://127.0.0.1:5000/api/admin/staff \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Karan Negi",
+    "email": "karan.guide@tma.com",
+    "password": "guidePassword123",
+    "phone": "+91 9876543222",
+    "contact_details": "Base Camp Channel 3",
+    "specialization": "High Altitude Rescue"
+  }'
+```
+
+### 5. Assign Staff to Trek (Only active staff permitted)
+```bash
+curl -X POST http://127.0.0.1:5000/api/admin/treks/1/assign \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "staff_id": 2
+  }'
+```
+
+### 6. Update Staff Status (`PATCH /api/admin/staff/<id>/status`)
+```bash
+curl -X PATCH http://127.0.0.1:5000/api/admin/staff/2/status \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "inactive"}'
+```
+
+### 7. Manage Users & Update Status (`PATCH /api/admin/users/<id>/status`)
+```bash
+curl -X PATCH http://127.0.0.1:5000/api/admin/users/3/status \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "blacklisted"}'
+```
+
+### 8. View All Bookings (Historical with User & Trek info)
+```bash
+curl -X GET "http://127.0.0.1:5000/api/admin/bookings?status=Booked" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+
+### 9. Unified Search
+```bash
+curl -X GET "http://127.0.0.1:5000/api/admin/search?q=Hampta&type=treks" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+
+### 10. Analytics Stats (Chart-Ready Arrays)
+```bash
+curl -X GET http://127.0.0.1:5000/api/admin/stats \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
 ```
