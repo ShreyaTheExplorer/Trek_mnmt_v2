@@ -14,7 +14,7 @@ const routes = [
             if (auth.isAuthenticated()) {
                 if (auth.role === 'admin') return '/admin/dashboard';
                 if (auth.role === 'staff') return '/staff';
-                return '/treks';
+                return '/dashboard';
             }
             return '/login';
         }
@@ -32,14 +32,29 @@ const routes = [
         meta: { guestOnly: true }
     },
     {
+        path: '/dashboard',
+        name: 'UserDashboard',
+        component: window.UserDashboard,
+        meta: { requiresAuth: true, roles: ['user'] }
+    },
+    {
+        path: '/user/dashboard',
+        redirect: '/dashboard'
+    },
+    {
         path: '/treks',
-        name: 'TreksCatalog',
-        component: window.TrekkerCatalog || window.TrekkerCatalogPlaceholder
+        name: 'TrekBrowse',
+        component: window.TrekBrowse || window.TrekkerCatalog
+    },
+    {
+        path: '/treks/:id',
+        name: 'TrekDetail',
+        component: window.TrekDetail
     },
     {
         path: '/my-bookings',
         name: 'MyBookings',
-        component: window.MyBookingsPlaceholder,
+        component: window.MyBookings,
         meta: { requiresAuth: true, roles: ['user'] }
     },
     {
@@ -67,7 +82,7 @@ const routes = [
     {
         path: '/profile',
         name: 'Profile',
-        component: window.ProfilePlaceholder,
+        component: window.ProfileView || window.ProfilePlaceholder,
         meta: { requiresAuth: true }
     },
     {

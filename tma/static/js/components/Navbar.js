@@ -86,6 +86,11 @@ const Navbar = {
 
             <div class="collapse navbar-collapse" id="navbarContent">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li v-if="isLoggedIn && userRole === 'user'" class="nav-item">
+                        <router-link to="/dashboard" class="nav-link" active-class="active">
+                            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                        </router-link>
+                    </li>
                     <li class="nav-item">
                         <router-link to="/treks" class="nav-link" active-class="active">
                             <i class="bi bi-map me-1"></i>Explore Treks

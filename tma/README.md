@@ -45,6 +45,9 @@ python tma/test_phase8.py
 
 # Part 9: Staff UI & Expedition Operations (StaffDashboard, StaffTrekDetail, Manifest, Slot Controls)
 python tma/test_phase9.py
+
+# Part 10: Trekker User UI (UserDashboard, TrekBrowse, TrekDetail, MyBookings, Profile, CSV Export)
+python tma/test_phase10.py
 ```
 
 ### 3. Start the Flask Application
@@ -254,5 +257,44 @@ static/
   - **Friendly Error Handling**:
     - `403 Forbidden`: Displays clear message that staff members are restricted to managing only treks assigned directly to them.
     - `409 Conflict`: Displays contextual conflict explanation.
+
+---
+
+## Part 10: Trekker / User UI Architecture
+
+### 1. User Suite Components (`static/js/components/`)
+- **`UserDashboard.js` (`/dashboard` or `/user/dashboard`)**:
+  - Displays high-level counters: Available Treks count, Active Booked count, Completed count, and Cancelled count.
+  - Active Booked Treks overview with quick navigation to `/my-bookings`.
+  - Notifications panel with read/unread tracking and "Mark all read" button.
+  - **"Export booking history (CSV)" Button**:
+    - Calls `POST /api/user/export`.
+    - Shows "Export started" and polls `/api/user/export/<task_id>` every 1.5s.
+    - Displays direct download link button upon completion.
+- **`TrekBrowse.js` (`/treks`)**:
+  - Search box querying keyword `q` across trek names and descriptions.
+  - Multi-parameter filters: Difficulty (`Easy`, `Moderate`, `Hard`), Location, and Duration range (`min_days` to `max_days`).
+  - Paginated trek cards displaying:
+    - Difficulty badge, Location, Duration, and Price per person.
+    - Real-time slot tracker (`X slots left` or `Fully Booked`).
+    - Open/Closed registration badge.
+    - **"Book" Button**: Strictly disabled unless the trek is `Open` and has slots remaining (`available_slots > 0`).
+- **`TrekDetail.js` (`/treks/:id`)**:
+  - Full expedition metadata, duration, dates, pricing, detailed description, and gear/packing instructions.
+  - Interactive participants count input (validated between `1` and `available_slots`).
+  - Real-time total amount calculation (`participants * price`).
+  - "Book Expedition" button (disabled unless Open and slots available).
+  - Confirmed booking card with optional **"Pay (simulated)"** button that calls `POST /api/user/bookings/<id>/pay` and immediately marks the reservation as `Paid`.
+- **`MyBookings.js` (`/my-bookings`)**:
+  - **Active Reservations Tab**:
+    - Reservation cards showing trek title, dates, enrolled headcount, payment badge, and total price.
+    - **"Pay Now" Simulator**: Sets payment status to `Paid`.
+    - **"Cancel" Button**: Opens modal confirmation dialog; restores slots to the trek, moves status to `Cancelled`, and creates an in-app alert.
+  - **Booking History Tab**:
+    - Full historical table of past `Completed` and `Cancelled` reservations.
+- **`ProfileView.js` (`/profile`)**:
+  - HTML5 validated profile form: Name, Phone (regex pattern `^\+?[0-9\s\-]{7,20}$`), Age, Emergency Contact, and Residential Address (`PUT /api/auth/me`).
+  - Password change form (requires current password and new password $\ge 6$ characters).
+
 
 
